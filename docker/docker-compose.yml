@@ -1,0 +1,101 @@
+services:
+
+  db:
+    container_name: pg1
+    restart: always
+    image: postgres:15.2
+    env_file:
+      - .env
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+
+  adminer:
+    container_name: adminer1
+    image: adminer
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - 45010:8080
+
+  zookeeper:
+    container_name: zookeeper
+    image: confluentinc/cp-zookeeper:7.6.0
+    hostname: zookeeper
+    ports:
+      - "2181:2181"
+    env_file:
+      - .env
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    hostname: kafka
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    env_file:
+      - .env
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  kafka-ui:
+    container_name: kafka_ui1
+    image: provectuslabs/kafka-ui:latest
+    depends_on:
+      - kafka
+    ports:
+      - "45011:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_JMXPORT: 9997
+      SPRING_PROFILES_ACTIVE: prod
+      JVM_OPTS: "-Xms512m -Xmx512m -XX:+UseG1GC"
+
+
+  redis:
+    container_name: redis1
+    image: redis:latest
+    ports:
+      - "45012:6379"
+#    env_file:
+#      - .env
+#    command: ["redis-server", "--requirepass", "$$REDIS_PASSWORD"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - redis_network
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: redisinsight
+    ports:
+      - "45013:5540"
+    volumes:
+      - redisinsight_data:/db
+    restart: unless-stopped
+
+
+networks:
+  redis_network:
+
+volumes:
+  pg_data:
+  zookeeper_data:
+  zookeeper_log:
+  kafka_data:
+  redis_data:
+  redisinsight_data:

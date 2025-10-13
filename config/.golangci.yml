@@ -1,0 +1,123 @@
+version: 2
+
+run:
+  timeout: 5m
+  exclude-dirs:
+    - "./pg_data"
+    - "./pg_data/*"
+  tests: true
+  skip-dirs:
+    - vendor
+    - bin
+  skip-files:
+    - ".*\\.gen\\.go"      # сгенерированные файлы
+    - ".*_mock\\.go"
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - unused
+    - ineffassign
+    - gocritic
+    - revive
+    - depguard
+    - gosec
+    - unconvert
+    - dupl
+    - misspell
+    - nakedret
+    - bodyclose
+    - sqlclosecheck
+  disable:
+    - gocyclo   # можно включить при желании
+    - lll       # длинные строки контролируем через revive
+  fast: false
+
+linters-settings:
+  gofmt:
+    simplify: true
+
+  goimports:
+    local-prefixes: app
+
+  revive:
+    ignore-generated-header: true
+    severity: warning
+    rules:
+      - name: indent-error-flow
+      - name: var-naming
+      - name: exported
+      - name: range-should-reuse-iterator
+      - name: error-strings
+      - name: unused-parameter
+      - name: package-comments
+      - name: blank-imports
+      - name: ioutil-discard
+
+  gocritic:
+    enabled-checks:
+      - appendAssign
+      - assignOp
+      - boolExprSimplify
+      - defaultCaseOrder
+      - deferInLoop
+      - emptyStringTest
+      - flagDeref
+      - formatSprint
+      - ifElseChain
+      - indexAlloc
+      - kindGuard
+      - longParamList
+      - mergeIntoRange
+      - nilCheck
+      - paramTypeCombine
+      - rangeValCopy
+      - regexpRaw
+      - redundantBreak
+      - simplifyTypeSwitch
+    disabled-checks:
+      - hugeParam
+
+  depguard:
+    list-type: blacklist
+    packages:
+      - github.com/sirupsen/logrus
+    include-go-root: false
+    packages-with-message:
+      github.com/sirupsen/logrus: "use internal logger or zap instead"
+
+  gocyclo:
+    min-complexity: 15
+
+  dupl:
+    threshold: 100
+
+  misspell:
+    locale: US
+    ignore-words:
+      - TODO
+      - FIXME
+
+  gosec:
+    severity: medium
+    exclude:
+      - G104 # Ignore errors from Close() in defer where appropriate
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-use-default: false
+  include:
+    - ".*"  # включить всё по умолчанию
+
+paths:
+  # дополнительно можно включить/исключить конкретные пути
+  # skip-dirs-use-default: true
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  uniq-by-line: true

@@ -1,0 +1,105 @@
+.
+├── bin
+│   └── main
+├── cmd
+│   └── app
+│       └── main.go
+├── config
+│   └── configs.json
+├── db
+│   ├── migrations
+│   │   ├── 000001_init.down.sql
+│   │   ├── 000001_init.up.sql
+│   │   ├── 000002_add_user_index.down.sql
+│   │   └── 000002_add_user_index.up.sql
+│   └── migrations.go
+├── docker
+│   ├── docker-compose.yml
+│   └── Dockerfile
+├── Dockerfile
+├── docs
+│   ├── openapi.yaml
+│   └── README.md
+├── go.mod
+├── go.sum
+├── internal
+│   ├── app
+│   │   ├── adapter
+│   │   │   ├── client
+│   │   │   │   └── kafka
+│   │   │   │       └── user.go
+│   │   │   └── http
+│   │   │       ├── middleware.go
+│   │   │       ├── order
+│   │   │       │   ├── converter.go
+│   │   │       │   └── handler.go
+│   │   │       └── user
+│   │   │           ├── converter.go
+│   │   │           └── handler.go
+│   │   ├── app.go
+│   │   ├── core
+│   │   │   ├── domain
+│   │   │   │   ├── order.go
+│   │   │   │   └── user.go
+│   │   │   ├── port
+│   │   │   │   ├── repository.go
+│   │   │   │   ├── service.go
+│   │   │   │   └── usecase.go
+│   │   │   ├── service
+│   │   │   └── usecase
+│   │   │       ├── order.go
+│   │   │       └── user.go
+│   │   ├── di.go
+│   │   └── worker
+│   │       └── kafka
+│   └── repository
+│       ├── postgres
+│       │   ├── order.go
+│       │   └── user.go
+│       └── redis
+│           └── redis.go
+├── logs
+├── Makefile
+├── pg_data  [error opening dir]
+├── pkg
+│   ├── config
+│   │   └── config.go
+│   ├── database
+│   │   └── postgres.go
+│   ├── env
+│   │   └── env.go
+│   ├── filemanager
+│   │   └── filemanager.go
+│   ├── hash
+│   │   └── hash.go
+│   ├── kafka
+│   │   └── kafka.go
+│   ├── mysql
+│   │   └── mysql.go
+│   ├── server
+│   │   └── server.go
+│   ├── telegram
+│   │   └── telegram.go
+│   └── utilities
+│       └── utilities.go
+├── podman-compose.yml
+├── README.md
+├── scripts
+│   ├── createFileForGPT.sh
+│   ├── installModules.sh
+│   ├── linter.sh
+│   ├── start.sh
+│   ├── stop.sh
+│   ├── updateGO.sh
+│   └── updateModules.sh
+├── static
+│   └── index.html
+├── tests
+│   ├── checkAuth.sh
+│   ├── integration
+│   ├── mocks
+│   ├── speed.sh
+│   └── unit
+└── tree.txt
+
+46 directories, 57 files

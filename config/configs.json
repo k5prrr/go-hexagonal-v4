@@ -1,0 +1,17 @@
+{
+    "rootPath":"",
+    "debug":true,
+    "release":false,
+    "salt":"",
+    
+    "telegram":{
+        "token":"",
+        "webhook":true
+    },
+    "sql":{
+        "host":"localhost",
+        "login":"",
+        "password":"",
+        "name":""
+    }
+}
