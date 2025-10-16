@@ -1,3 +1,0 @@
-package telegram
-
-// func CreateCode

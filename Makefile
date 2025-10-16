@@ -9,6 +9,10 @@ up:
 	$(COMPOSE) down
 	$(COMPOSE) up -d --build
 	$(CONTAINER_ENGINE) ps -a
+base:
+	$(COMPOSE) down
+	$(COMPOSE) -f ./docker/db.yml up -d
+	$(CONTAINER_ENGINE) ps -a
 
 build:
 	go build -o bin/main ./cmd/app

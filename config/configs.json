@@ -8,7 +8,7 @@
         "token":"",
         "webhook":true
     },
-    "sql":{
+    "pg":{
         "host":"localhost",
         "login":"",
         "password":"",

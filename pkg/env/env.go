@@ -19,11 +19,11 @@ func New(envPath string) *Env {
 	}
 
 	env := Env{Path: envPath}
-	env.Load()
+	env.init()
 	return &env
 }
 
-func (e *Env) Load() {
+func (e *Env) init() {
 	file, err := os.Open(e.Path)
 	if err != nil {
 		return

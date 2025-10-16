@@ -1,6 +1,7 @@
 package utilities
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -118,4 +119,12 @@ func RandomString(length int) string {
 	}
 
 	return string(result)
+}
+
+func randStringHex(nBytes int) (string, error) {
+	b := make([]byte, nBytes)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }

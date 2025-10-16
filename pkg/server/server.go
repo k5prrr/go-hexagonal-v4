@@ -11,19 +11,36 @@ import (
 )
 
 type Server struct {
-	httpServer *http.Server
+	httpServer      *http.Server
+	ShutdownTimeout time.Duration
 }
 
-func New(addr string, handler http.Handler) *Server {
+func New(addr string, router http.Handler, readHeaderTimeout time.Duration) *Server {
+	if addr == "" {
+		addr = ":8080"
+	}
+	if router == nil {
+		router = http.DefaultServeMux
+	}
+	if readHeaderTimeout == 0 {
+		readHeaderTimeout = time.Second * 10
+	}
+
 	return &Server{
 		httpServer: &http.Server{
-			Addr:    addr,
-			Handler: handler,
+			Addr:              addr,
+			ReadHeaderTimeout: readHeaderTimeout,
+			Handler:           router,
 		},
+		ShutdownTimeout: 5 * time.Second,
 	}
 }
 
-func (s *Server) Run() {
+func (s *Server) Run(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	go func() {
 		log.Printf("Server is running on %s", s.httpServer.Addr)
 		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -31,19 +48,21 @@ func (s *Server) Run() {
 		}
 	}()
 
-	// Ожидание сигналов для graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	log.Println("Shutdown Server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, s.ShutdownTimeout)
 	defer cancel()
 
 	if err := s.httpServer.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		log.Printf("http server shutdown failed: %v\n", err)
+		return err
 	}
 
-	log.Println("Server exited properly")
+	log.Printf("http server stopped")
+
+	return nil
 }

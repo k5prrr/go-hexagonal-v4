@@ -1,8 +1,8 @@
-//тут и хендлеры
+package api
 
 //и роуты
-
-package user
+/*
+package api
 
 import (
 	"app/internal/domain/user"

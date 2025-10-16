@@ -1,0 +1,8 @@
+.env0
+configs0/
+go.sum
+go.mod
+logs/
+pg_data/
+.idea/
+bin/main

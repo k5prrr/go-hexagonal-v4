@@ -5,9 +5,9 @@ services:
     restart: always
     image: docker.io/library/postgres:15.2
     env_file:
-      - .env
+      - ./../.env
     volumes:
-      - ./pg_data:/var/lib/postgresql/data
+      - ./../pg_data:/var/lib/postgresql/data
     ports:
       - "15432:5432"
 
@@ -19,15 +19,6 @@ services:
       - db
     ports:
       - 45010:8080
-
-  app:
-    container_name: go-app
-    build: .
-    restart: always
-    depends_on:
-      - db
-    ports:
-      - "45013:8080"
 
 volumes:
   pg_data:
