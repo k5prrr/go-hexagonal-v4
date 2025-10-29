@@ -4,24 +4,23 @@ package app
 import (
 	"app/internal/app/adapter/api"
 	"app/internal/app/core/port"
+	"app/internal/app/core/usecase"
 	"app/internal/repository/postgres"
-	"app/pkg/env"
-	"context"
-	"database/sql"
-	"time"
+	"app/pkg/database"
+	"fmt"
 )
 
 type dependencyInjection struct {
-	router   *api.Router
-	useCase  *port.IUseCase
-	repoAuth *port.IAuthRepo
-	env      *env.Env
-	db       *pgx.Conn
+	router  *api.Router
+	useCase port.IUseCase
+	config  *AppConfig
+	db      database.IDB
+	repo    port.IRepo
 }
 
-func NewDependencyInjection() *dependencyInjection {
+func NewDependencyInjection(config *AppConfig) *dependencyInjection {
 	return &dependencyInjection{
-		env: env.New(""),
+		config: config,
 	}
 }
 
@@ -31,28 +30,34 @@ func (d *dependencyInjection) Router() *api.Router {
 	}
 	return d.router
 }
-func (d *dependencyInjection) UseCase() *port.IUseCase {
+func (d *dependencyInjection) UseCase() port.IUseCase {
 	if d.useCase == nil {
-		//d.useCase = api.NewRouter(d.UseCase)
+		d.useCase = usecase.NewUseCase(d.Repo())
 	}
 	return d.useCase
 }
-func (d *dependencyInjection) RepoAuth() *port.IAuthRepo {
-	if d.repoAuth == nil {
-		d.repoAuth = postgres.NewRepoAuth(d.DB())
+func (d *dependencyInjection) Repo() port.IRepo {
+	if d.repo == nil {
+		d.repo = postgres.NewRepo(d.DB())
 	}
-	return d.repoAuth
+	return d.repo
 }
-func (d *dependencyInjection) DB() *pgx.Conn {
-	if d.db == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
 
-		conn, err := pgx.Connect(ctx, d.env.Get("DATABASE_URL", "postgres://user:pass@localhost/dbname?sslmode=disable"))
-		if err != nil {
-			panic("failed to connect to database: " + err.Error())
+func (d *dependencyInjection) DB() database.IDB {
+	if d.db == nil {
+		dbConf := &database.DBConfig{
+			Name:     d.config.PGDb,
+			User:     d.config.PGUser,
+			Password: d.config.PGPassword,
+			Host:     d.config.PGHost,
+			Port:     d.config.PGPort,
 		}
-		d.db = conn
+
+		db, err := database.NewDB(dbConf)
+		if err != nil {
+			panic(fmt.Sprintf("failed to initialize database: %v", err))
+		}
+		d.db = db
 	}
 	return d.db
 }

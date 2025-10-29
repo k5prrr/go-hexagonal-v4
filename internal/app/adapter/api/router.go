@@ -8,11 +8,11 @@ import (
 
 type Router struct {
 	mux     *http.ServeMux
-	useCase *port.IUseCase
+	useCase port.IUseCase
 	path    string
 }
 
-func NewRouter(useCase *port.IUseCase) *Router {
+func NewRouter(useCase port.IUseCase) *Router {
 	r := &Router{
 		mux:     http.NewServeMux(),
 		useCase: useCase,
@@ -29,7 +29,7 @@ func (r *Router) initRouter() {
 }
 
 func (r *Router) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) {
-	r.mux.HandleFunc(fmt.Sprintf("%sincrement", r.path), f)
+	r.mux.HandleFunc(fmt.Sprintf("%s%s", r.path, path), f)
 }
 
 // ServeHTTP делает Router совместимым с http.Handler

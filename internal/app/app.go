@@ -6,18 +6,24 @@ import (
 	"app/pkg/server"
 )
 
-const (
-	httpAddr = ":8080"
-)
-
 type App struct {
 	di     *dependencyInjection
 	server *server.Server
+	config *AppConfig
+}
+type AppConfig struct {
+	HttpAddr   string
+	PGUser     string
+	PGPassword string
+	PGDb       string
+	PGPort     string
+	PGHost     string
 }
 
-func New() (*App, error) {
+func New(config *AppConfig) (*App, error) {
 	a := &App{
-		di: NewDependencyInjection(),
+		di:     NewDependencyInjection(config),
+		config: config,
 	}
 	err := a.initServer()
 	if err != nil {
@@ -34,7 +40,7 @@ func (a *App) Run(ctx context.Context) error {
 
 // Инициализация сервера
 func (a *App) initServer() error {
-	a.server = server.New(httpAddr, a.di.Router(), 0)
+	a.server = server.New(a.config.HttpAddr, a.di.Router(), 0)
 
 	return nil
 }

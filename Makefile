@@ -18,7 +18,7 @@ build:
 	go build -o bin/main ./cmd/app
 
 run:
-	go fmt ./...
+	go fmt ./cmd/... ./internal/... ./pkg/...
 	clear
 	go run cmd/app/main.go || echo "exit code: $?"
 
@@ -37,7 +37,8 @@ installLint:
 installDebugging:
 	go install github.com/go-delve/delve/cmd/dlv@latest
 
-
+gpt:
+	bash scripts/createFileForGPT.sh
 
 
 # $HOME/go/bin/golangci-lint --version
