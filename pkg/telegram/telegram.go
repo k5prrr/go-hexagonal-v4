@@ -2,12 +2,18 @@ package telegram
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 )
+
+/*
+https://api.telegram.org/bot<TOKEN>/getUpdates
+curl "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
+
+
+*/
 
 type TelegramConfig struct {
 	Token   string `json:"Token"`

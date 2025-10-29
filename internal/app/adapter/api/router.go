@@ -26,6 +26,7 @@ func (r *Router) initRouter() {
 	r.mux.Handle(fmt.Sprintf("%sdoc", r.path), http.FileServer(http.Dir("./static/")))
 	r.testRouter()
 	r.authRouter()
+	r.telegramRouter()
 }
 
 func (r *Router) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) {
