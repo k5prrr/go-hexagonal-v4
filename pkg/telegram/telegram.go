@@ -2,18 +2,23 @@ package telegram
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
+	"sync"
 )
 
 /*
 https://api.telegram.org/bot<TOKEN>/getUpdates
 curl "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
-
-
 */
+var (
+	offsetFilePath = "data/telegramOffset.txt"
+)
 
 type TelegramConfig struct {
 	Token   string `json:"Token"`
@@ -22,23 +27,53 @@ type TelegramConfig struct {
 
 type Telegram struct {
 	config *TelegramConfig
+	offset int64
+	mu     sync.RWMutex
 }
 
 func New(config *TelegramConfig) *Telegram {
-	return &Telegram{
+	t := &Telegram{
 		config: config,
 	}
+	t.loadOffset()
+	return t
+}
+func (t *Telegram) loadOffset() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	data, err := os.ReadFile(offsetFilePath)
+	if err != nil {
+		// Файл не существует или ошибка — начинаем с 0
+		t.offset = 0
+		return
+	}
+
+	str := string(data)
+	str = strings.TrimSpace(str)
+	if str == "" {
+		t.offset = 0
+		return
+	}
+
+	parsed, err := strconv.ParseInt(str, 10, 64)
+	if err != nil {
+		t.offset = 0
+		return
+	}
+
+	t.offset = parsed
 }
 
-func (telegram *Telegram) botUrl(command string) string {
+func (t *Telegram) botUrl(command string) string {
 	return fmt.Sprintf(
 		"https://api.telegram.org/bot%s/%s",
-		telegram.config.Token,
+		t.config.Token,
 		command,
 	)
 }
 
-func (telegram *Telegram) SendMassage(chatID int, message string, replyMarkup string) (string, error) {
+func (t *Telegram) SendMassage(chatID int, message string, replyMarkup string) (string, error) {
 	// Создаём данные сообщения
 	messageMap := map[string]string{
 		"chat_id": strconv.Itoa(chatID),
@@ -56,7 +91,7 @@ func (telegram *Telegram) SendMassage(chatID int, message string, replyMarkup st
 	}
 
 	response, err := http.Post(
-		telegram.botUrl("sendMessage"),
+		t.botUrl("sendMessage"),
 		"application/json",
 		bytes.NewBuffer(messageJson),
 	)
@@ -79,7 +114,7 @@ func (telegram *Telegram) SendMassage(chatID int, message string, replyMarkup st
 	return string(responseBody), nil
 }
 
-func (telegram *Telegram) SendPhoto(chatID int, urlPhoto string, message string, replyMarkup string) (string, error) {
+func (t *Telegram) SendPhoto(chatID int, urlPhoto string, message string, replyMarkup string) (string, error) {
 	// Создаём данные сообщения
 	messageMap := map[string]string{
 		"chat_id": strconv.Itoa(chatID),
@@ -99,11 +134,11 @@ func (telegram *Telegram) SendPhoto(chatID int, urlPhoto string, message string,
 	}
 
 	response, err := http.Post(
-		telegram.botUrl("sendPhoto"),
+		t.botUrl("sendPhoto"),
 		"application/json",
 		bytes.NewBuffer(messageJson),
 	)
-	//fmt.Println(telegram.botUrl("sendMessage"))
+	//fmt.Println(t.botUrl("sendMessage"))
 	if err != nil {
 		return "", err
 	}
@@ -120,6 +155,61 @@ func (telegram *Telegram) SendPhoto(chatID int, urlPhoto string, message string,
 	}
 
 	return string(responseBody), nil
+}
+func (t *Telegram) getOffset() int64 {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.offset
+}
+func (t *Telegram) setOffset(offset int64) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.offset = offset
+
+	return os.WriteFile(offsetFilePath, []byte(strconv.FormatInt(offset, 10)), 0644)
+}
+func (t *Telegram) GetUpdates() ([]InputMessage, error) {
+	url := t.botUrl(fmt.Sprintf("getUpdates?offset=%d&timeout=30", t.getOffset()+1))
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updates: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read updates: %w", err)
+	}
+
+	var result InputMessages
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal updates: %w", err)
+	}
+
+	if !result.Ok {
+		return nil, fmt.Errorf("API returned error: %s", string(body))
+	}
+
+	lenResults := len(result.Result)
+	if lenResults != 0 {
+		if err := t.setOffset(int64(result.Result[lenResults-1].UpdateID)); err != nil {
+			return nil, err
+		}
+	}
+
+	return result.Result, nil
+}
+
+type InputMessages struct {
+	Ok     bool           `json:"ok"`
+	Result []InputMessage `json:"result"`
 }
 
 type InputMessage struct {
@@ -153,6 +243,7 @@ type InputMessage struct {
 }
 
 func (inputMessage *InputMessage) New(inputBodyBytes *[]byte) error {
+
 	return json.Unmarshal(*inputBodyBytes, inputMessage)
 }
 

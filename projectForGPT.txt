@@ -7,6 +7,8 @@
 │       └── main.go
 ├── config
 │   └── configs.json
+├── data
+│   └── telegramOffset.txt
 ├── db
 │   ├── migrations
 │   │   └── 000001_init.up.sql
@@ -30,6 +32,7 @@
 │   │   │   │   ├── example.go
 │   │   │   │   ├── middleware.go
 │   │   │   │   ├── router.go
+│   │   │   │   ├── telegram.go
 │   │   │   │   ├── test.go
 │   │   │   │   └── user
 │   │   │   └── client
@@ -50,7 +53,9 @@
 │   │   │       └── usecase.go
 │   │   ├── di.go
 │   │   └── worker
-│   │       └── kafka
+│   │       ├── kafka
+│   │       └── telegram
+│   │           └── worker.go
 │   └── repository
 │       ├── postgres
 │       │   └── repo.go
@@ -82,7 +87,6 @@
 │       └── utilities.go
 ├── podman-compose.yml
 ├── projectForGPT.txt
-├── README.md
 ├── scripts
 │   ├── createFileForGPT.sh
 │   ├── installModules.sh
@@ -105,7 +109,7 @@
     ├── speed.sh
     └── unit
 
-46 directories, 59 files
+48 directories, 61 files
 
 
 
@@ -1767,10 +1771,99 @@ volumes:
 
 
 --- Содержимое файла ./docs/README.md ---
+
+http://localhost:8080/api/v2/increment
+
+http://localhost:8080/api/v2/registration/linkcheckphone
+
+http://localhost:45010/?pgsql=db&username=postgres_user&db=postgres_db&ns=public&select=auth_codes
+
+
+
+
+
+
+
+
+
 https://h7team.ru/installGO/
 
 ## Start
 go fmt ./... && clear && go run ./cmd/App/main.go
+
+
+
+
+Это для быстрого старта проекта
+https://github.com/k5prrr/go-hexagonal-v1
+
+Ещё примеры
+https://github.com/GolangLessons/sso
+
+
+make up
+
+go get github.com/jackc/pgx/v5/stdlib
+
+
+
+
+
+
+
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+
+
+
+# OLD ---
+
+# Install
+1. micro .gitignore
+2. sh ./scripts/installModules.sh
+3. sh scripts/start.sh
+
+# Start
+in main dir
+sh scripts/start.sh
+http://localhost:8081/testSpeed
+
+
+
+# Исправлю
+Пример мидлваре
+Приведите имена пакетов к нижнему регистру.
+Пишите сообщения и логи на английском для универсальности.
+Добавьте тесты: В проекте отсутствуют тесты (папка tests пуста).
+Используйте линтеры: Добавьте настройки для golangci-lint в .golangci.yml.
+Документация: Добавьте описание API в api/openapi.yaml и примеры использования в README_API.md.
+
+
+Hexagonal architecture! - Сейчас в моде
+
+https://www.youtube.com/watch?v=3YTLDYG5MnQ
+
+https://www.youtube.com/watch?v=0Fhsgmz-Gig
+
+https://www.youtube.com/watch?app=desktop&v=yyrvXnXLnU8
+
+covrom
+
+
+sudo apt install podman-compose
+sudo nano /etc/containers/registries.conf
+[registries.search]
+registries = ["docker.io"]
+
+[registries.insecure]
+registries = []
+
+
+mkdir -p ./pg_data ./migrations
+
+sudo podman stop $(sudo podman ps -aq) && sudo podman rm $(sudo podman ps -aq)
+podman-compose up -d
+podman ps -a
 
 
 
@@ -2178,6 +2271,11 @@ cron-подобная
 
 
 
+--- Содержимое файла ./internal/app/worker/telegram/worker.go ---
+package telegram
+
+
+
 --- Содержимое файла ./internal/app/adapter/client/kafka/user.go ---
 package kafka
 
@@ -2222,6 +2320,7 @@ func (r *Router) initRouter() {
 	r.mux.Handle(fmt.Sprintf("%sdoc", r.path), http.FileServer(http.Dir("./static/")))
 	r.testRouter()
 	r.authRouter()
+	r.telegramRouter()
 }
 
 func (r *Router) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) {
@@ -2447,6 +2546,23 @@ type User struct {
 
 
 
+--- Содержимое файла ./internal/app/adapter/api/telegram.go ---
+package api
+
+import "net/http"
+
+//import "app/pkg/telegram"
+
+func (r *Router) telegramRouter() {
+	r.HandleFunc("telegram", r.telegramInput)
+}
+
+func (r *Router) telegramInput(w http.ResponseWriter, req *http.Request) {
+	//telegram.New()
+}
+
+
+
 --- Содержимое файла ./internal/app/adapter/.readme.md ---
 содержит логику периодического выполнения задач
 
@@ -2467,11 +2583,7 @@ import (
 	"app/internal/app/core/usecase"
 	"app/internal/repository/postgres"
 	"app/pkg/database"
-	"app/pkg/env"
-	"context"
-	"database/sql"
 	"fmt"
-	"time"
 )
 
 type dependencyInjection struct {
@@ -2500,7 +2612,7 @@ func (d *dependencyInjection) UseCase() port.IUseCase {
 	}
 	return d.useCase
 }
-func (d *dependencyInjection) Repo() *port.IRepo {
+func (d *dependencyInjection) Repo() port.IRepo {
 	if d.repo == nil {
 		d.repo = postgres.NewRepo(d.DB())
 	}
@@ -2553,7 +2665,7 @@ type AppConfig struct {
 
 func New(config *AppConfig) (*App, error) {
 	a := &App{
-		di:     NewDependencyInjection(config * AppConfig),
+		di:     NewDependencyInjection(config),
 		config: config,
 	}
 	err := a.initServer()
@@ -4019,6 +4131,12 @@ import (
 	"strconv"
 )
 
+/*
+https://api.telegram.org/bot<TOKEN>/getUpdates
+curl "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
+*/
+var currentOffset int64
+
 type TelegramConfig struct {
 	Token   string `json:"Token"`
 	Webhook bool   `json:"Webhook"`
@@ -4125,6 +4243,55 @@ func (telegram *Telegram) SendPhoto(chatID int, urlPhoto string, message string,
 
 	return string(responseBody), nil
 }
+func getOffset() int64 {
+	return currentOffset
+}
+func setOffset(offset int64) {
+	if offset < currentOffset {
+		return
+	}
+	currentOffset = offset
+}
+func (t *Telegram) GetUpdates() ([]InputMessage, error) {
+	url := fmt.Sprintf("%s?offset=%d&timeout=30", t.botUrl("getUpdates"), getOffset()+1)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updates: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read updates: %w", err)
+	}
+
+	var result InputMessages
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal updates: %w", err)
+	}
+
+	if !result.Ok {
+		return nil, fmt.Errorf("API returned error: %s", string(body))
+	}
+
+	lenResults := len(result.Result)
+	if lenResults != 0 {
+		setOffset(int64(result.Result[lenResults-1].UpdateID))
+	}
+
+	return result.Result, nil
+}
+
+type InputMessages struct {
+	Ok     bool           `json:"ok"`
+	Result []InputMessage `json:"result"`
+}
 
 type InputMessage struct {
 	UpdateID int `json:"update_id"`
@@ -4157,6 +4324,7 @@ type InputMessage struct {
 }
 
 func (inputMessage *InputMessage) New(inputBodyBytes *[]byte) error {
+
 	return json.Unmarshal(*inputBodyBytes, inputMessage)
 }
 
@@ -4684,80 +4852,6 @@ CMD ["./main"]
 
 
 
---- Содержимое файла ./README.md ---
-Это для быстрого старта проекта
-https://github.com/k5prrr/go-hexagonal-v1
-
-Ещё примеры
-https://github.com/GolangLessons/sso
-
-
-make up
-
-go get github.com/jackc/pgx/v5/stdlib
-
-
-
-
-
-
-
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
-
-
-
-# OLD ---
-
-# Install
-1. micro .gitignore
-2. sh ./scripts/installModules.sh
-3. sh scripts/start.sh
-
-# Start
-in main dir
-sh scripts/start.sh
-http://localhost:8081/testSpeed
-
-
-
-# Исправлю
-Пример мидлваре
-Приведите имена пакетов к нижнему регистру.
-Пишите сообщения и логи на английском для универсальности.
-Добавьте тесты: В проекте отсутствуют тесты (папка tests пуста).
-Используйте линтеры: Добавьте настройки для golangci-lint в .golangci.yml.
-Документация: Добавьте описание API в api/openapi.yaml и примеры использования в README_API.md.
-
-
-Hexagonal architecture! - Сейчас в моде
-
-https://www.youtube.com/watch?v=3YTLDYG5MnQ
-
-https://www.youtube.com/watch?v=0Fhsgmz-Gig
-
-https://www.youtube.com/watch?app=desktop&v=yyrvXnXLnU8
-
-covrom
-
-
-sudo apt install podman-compose
-sudo nano /etc/containers/registries.conf
-[registries.search]
-registries = ["docker.io"]
-
-[registries.insecure]
-registries = []
-
-
-mkdir -p ./pg_data ./migrations
-
-sudo podman stop $(sudo podman ps -aq) && sudo podman rm $(sudo podman ps -aq)
-podman-compose up -d
-podman ps -a
-
-
-
 --- Содержимое файла ./.gitattributes ---
 * text=auto eol=lf
 
@@ -4899,3 +4993,7 @@ gpt:
 # BD gorm | go get -u gorm.io/gorm"
 # Token jwt | go get -u github.com/golang-jwt/jwt"
 # Hash bcrypt | go get -u golang.org/x/crypto/bcrypt"
+
+
+
+--- Содержимое файла ./data/telegramOffset.txt ---
