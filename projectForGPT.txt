@@ -50,6 +50,7 @@
 │   │   │   │   └── port.go
 │   │   │   ├── service
 │   │   │   └── usecase
+│   │   │       ├── checkPhone.go
 │   │   │       └── usecase.go
 │   │   ├── di.go
 │   │   └── worker
@@ -109,7 +110,7 @@
     ├── speed.sh
     └── unit
 
-48 directories, 61 files
+48 directories, 62 files
 
 
 
@@ -119,6 +120,7 @@ package main
 import (
 	"context"
 	"log"
+	"strconv"
 
 	"app/internal/app"
 	"app/pkg/env"
@@ -128,6 +130,12 @@ func main() {
 	ctx := context.Background()
 	environment := env.New("")
 
+	tgTimeOutStr := environment.Get("TELEGRAM_TIMEOUT", "4")
+	tgTimeOut, err := strconv.Atoi(tgTimeOutStr)
+	if err != nil {
+		log.Fatalf("Invalid TELEGRAM_TIMEOUT: %v", err)
+	}
+
 	a, err := app.New(&app.AppConfig{
 		HttpAddr: environment.Get("APP_SERVER_ADDRESS", ":8080"),
 
@@ -136,6 +144,9 @@ func main() {
 		PGDb:       environment.Get("POSTGRES_DB", "postgres_db"),
 		PGPort:     environment.Get("APP_POSTGRES_PORT", "15432"),
 		PGHost:     environment.Get("APP_POSTGRES_HOST", "localhost"),
+
+		TGToken:      environment.Get("TELEGRAM_TOKEN", ""),
+		TGTimeoutSec: tgTimeOut,
 	})
 	if err != nil {
 		log.Fatalf("Failed to initialize app: %v", err)
@@ -2181,13 +2192,6 @@ package usecase
 
 import (
 	"app/internal/app/core/port"
-	"encoding/hex"
-	"fmt"
-
-	"context"
-	"crypto/rand"
-
-	"errors"
 )
 
 // Тут он как основной, тут только создания
@@ -2198,6 +2202,19 @@ type UseCase struct {
 func NewUseCase(repo port.IRepo) port.IUseCase {
 	return &UseCase{repo: repo}
 }
+
+
+
+--- Содержимое файла ./internal/app/core/usecase/checkPhone.go ---
+package usecase
+
+import (
+	"context"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"math/rand"
+)
 
 func (u *UseCase) CreateCodeCheckPhone(ctx context.Context, action string) (string, error) {
 	if action != "registration" && action != "client" {
@@ -2214,6 +2231,14 @@ func (u *UseCase) CreateCodeCheckPhone(ctx context.Context, action string) (stri
 	}
 
 	return code, nil
+}
+
+func (u *UseCase) AddChatIdByCodeCheckPhone(ctx context.Context, code string, chatId int) error {
+
+}
+
+func (u *UseCase) AddPhoneByChatId(ctx context.Context, chatId int, phone string) error {
+
 }
 
 func randStringHex(nBytes int) (string, error) {
@@ -2244,6 +2269,8 @@ import "context"
 // Так, давай на первых этапах IUseCase будет как общий, а потом разделим
 type IUseCase interface {
 	CreateCodeCheckPhone(ctx context.Context, t string) (string, error)
+	AddUserIdCodeCheckPhone(ctx context.Context, code string, id int)
+	AddPhoneByChatId(ctx context.Context, id int, s string)
 }
 type IRepo interface {
 	AddCodeCheckPhone(ctx context.Context, code, codeType string) error
@@ -2273,6 +2300,94 @@ cron-подобная
 
 --- Содержимое файла ./internal/app/worker/telegram/worker.go ---
 package telegram
+
+import (
+	"app/internal/app/core/port"
+	"app/pkg/telegram"
+	"context"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// Реагируем только на старт с верным кодом и на контакт
+
+type TelegramWorker struct {
+	tg      *telegram.Telegram
+	useCase port.IUseCase
+}
+
+func NewTelegramWorker(token string, useCase port.IUseCase) *TelegramWorker {
+	return &TelegramWorker{
+		tg: telegram.New(&telegram.TelegramConfig{
+			Token:   token,
+			Webhook: false,
+		}),
+		useCase: useCase,
+	}
+}
+
+func (t *TelegramWorker) Start(ctx context.Context, timeoutSec int) {
+	interval := time.Duration(timeoutSec) * time.Second
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Telegram worker stopped")
+			return
+		case <-ticker.C:
+			t.Step()
+		}
+	}
+}
+func (t *TelegramWorker) Stop() {
+
+}
+
+func (t *TelegramWorker) Step() {
+	messages, err := t.tg.GetSimpleUpdates()
+	if err != nil {
+		log.Printf("failed to get updates: %v", err)
+		return
+	}
+
+	for _, message := range messages {
+		if strings.HasPrefix(message.Text, "/start ") {
+			code := strings.TrimSpace(message.Text[len("/start "):])
+			if code == "" {
+				continue
+			}
+
+			log.Printf("Received /start with code: %s from chatID=%d", code, message.ChatID)
+
+			ctx := context.Context(context.Background())
+			t.useCase.AddUserIdCodeCheckPhone(ctx, code, message.ChatID)
+		}
+		if message.Text == "contact" &&
+			message.ClickButton &&
+			strconv.Itoa(message.ChatID) == message.Params[0] {
+
+			log.Printf("Received contact from chatID=%d: UserID=%s, Phone=%s",
+				message.ChatID,
+				message.Params[0],
+				message.Params[1],
+			)
+
+			ctx := context.Context(context.Background())
+			t.useCase.AddPhoneByChatId(ctx, message.ChatID, message.Params[1])
+		}
+	}
+}
+func (t *TelegramWorker) acceptCode(chatID int, code string) {
+
+}
+func (t *TelegramWorker) acceptContact(chatID int, phone string) {
+
+}
 
 
 
@@ -2581,17 +2696,19 @@ import (
 	"app/internal/app/adapter/api"
 	"app/internal/app/core/port"
 	"app/internal/app/core/usecase"
+	"app/internal/app/worker/telegram"
 	"app/internal/repository/postgres"
 	"app/pkg/database"
 	"fmt"
 )
 
 type dependencyInjection struct {
-	router  *api.Router
-	useCase port.IUseCase
-	config  *AppConfig
-	db      database.IDB
-	repo    port.IRepo
+	router    *api.Router
+	useCase   port.IUseCase
+	config    *AppConfig
+	db        database.IDB
+	repo      port.IRepo
+	telegramW *telegram.TelegramWorker
 }
 
 func NewDependencyInjection(config *AppConfig) *dependencyInjection {
@@ -2638,29 +2755,45 @@ func (d *dependencyInjection) DB() database.IDB {
 	return d.db
 }
 
+func (d *dependencyInjection) TelegramWorker() *telegram.TelegramWorker {
+	if d.telegramW == nil {
+		if d.config.TGToken == "" {
+			panic("TELEGRAM_TOKEN is required")
+		}
+		d.telegramW = telegram.NewTelegramWorker(d.config.TGToken, d.UseCase())
+	}
+	return d.telegramW
+}
+
 
 
 --- Содержимое файла ./internal/app/app.go ---
 package app
 
 import (
+	"app/internal/app/worker/telegram"
 	"context"
 	//adapterhttp "app/internal/app/adapter/http"
 	"app/pkg/server"
 )
 
 type App struct {
-	di     *dependencyInjection
-	server *server.Server
-	config *AppConfig
+	di        *dependencyInjection
+	server    *server.Server
+	config    *AppConfig
+	telegramW *telegram.TelegramWorker
 }
 type AppConfig struct {
-	HttpAddr   string
+	HttpAddr string
+
 	PGUser     string
 	PGPassword string
 	PGDb       string
 	PGPort     string
 	PGHost     string
+
+	TGToken      string
+	TGTimeoutSec int
 }
 
 func New(config *AppConfig) (*App, error) {
@@ -2668,25 +2801,18 @@ func New(config *AppConfig) (*App, error) {
 		di:     NewDependencyInjection(config),
 		config: config,
 	}
-	err := a.initServer()
-	if err != nil {
-
-		return nil, err
-	}
+	a.server = server.New(a.config.HttpAddr, a.di.Router(), 0)
+	a.telegramW = telegram.NewTelegramWorker(a.config.TGToken, a.di.UseCase())
 
 	return a, nil
 }
 
 func (a *App) Run(ctx context.Context) error {
+	a.telegramW.Start(ctx, a.config.TGTimeoutSec)
 	return a.server.Run(ctx)
 }
 
 // Инициализация сервера
-func (a *App) initServer() error {
-	a.server = server.New(a.config.HttpAddr, a.di.Router(), 0)
-
-	return nil
-}
 
 
 
@@ -4128,14 +4254,19 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
+	"sync"
 )
 
 /*
 https://api.telegram.org/bot<TOKEN>/getUpdates
 curl "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
 */
-var currentOffset int64
+var (
+	offsetFilePath = "data/telegramOffset.txt"
+)
 
 type TelegramConfig struct {
 	Token   string `json:"Token"`
@@ -4144,23 +4275,50 @@ type TelegramConfig struct {
 
 type Telegram struct {
 	config *TelegramConfig
+	offset int64
+	mu     sync.RWMutex
 }
 
 func New(config *TelegramConfig) *Telegram {
-	return &Telegram{
+	t := &Telegram{
 		config: config,
 	}
+	t.loadOffset()
+	return t
 }
+func (t *Telegram) loadOffset() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
-func (telegram *Telegram) botUrl(command string) string {
+	data, err := os.ReadFile(offsetFilePath)
+	if err != nil {
+		t.offset = 0
+		return
+	}
+
+	str := strings.TrimSpace(string(data))
+	if str == "" {
+		t.offset = 0
+		return
+	}
+
+	parsed, err := strconv.ParseInt(str, 10, 64)
+	if err != nil {
+		t.offset = 0
+		return
+	}
+
+	t.offset = parsed
+}
+func (t *Telegram) botUrl(command string) string {
 	return fmt.Sprintf(
 		"https://api.telegram.org/bot%s/%s",
-		telegram.config.Token,
+		t.config.Token,
 		command,
 	)
 }
 
-func (telegram *Telegram) SendMassage(chatID int, message string, replyMarkup string) (string, error) {
+func (t *Telegram) SendMessage(chatID int, message string, replyMarkup string) (string, error) {
 	// Создаём данные сообщения
 	messageMap := map[string]string{
 		"chat_id": strconv.Itoa(chatID),
@@ -4178,7 +4336,7 @@ func (telegram *Telegram) SendMassage(chatID int, message string, replyMarkup st
 	}
 
 	response, err := http.Post(
-		telegram.botUrl("sendMessage"),
+		t.botUrl("sendMessage"),
 		"application/json",
 		bytes.NewBuffer(messageJson),
 	)
@@ -4200,8 +4358,7 @@ func (telegram *Telegram) SendMassage(chatID int, message string, replyMarkup st
 
 	return string(responseBody), nil
 }
-
-func (telegram *Telegram) SendPhoto(chatID int, urlPhoto string, message string, replyMarkup string) (string, error) {
+func (t *Telegram) SendPhoto(chatID int, urlPhoto string, message string, replyMarkup string) (string, error) {
 	// Создаём данные сообщения
 	messageMap := map[string]string{
 		"chat_id": strconv.Itoa(chatID),
@@ -4221,11 +4378,11 @@ func (telegram *Telegram) SendPhoto(chatID int, urlPhoto string, message string,
 	}
 
 	response, err := http.Post(
-		telegram.botUrl("sendPhoto"),
+		t.botUrl("sendPhoto"),
 		"application/json",
 		bytes.NewBuffer(messageJson),
 	)
-	//fmt.Println(telegram.botUrl("sendMessage"))
+	//fmt.Println(t.botUrl("sendMessage"))
 	if err != nil {
 		return "", err
 	}
@@ -4243,17 +4400,22 @@ func (telegram *Telegram) SendPhoto(chatID int, urlPhoto string, message string,
 
 	return string(responseBody), nil
 }
-func getOffset() int64 {
-	return currentOffset
+
+func (t *Telegram) getOffset() int64 {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.offset
 }
-func setOffset(offset int64) {
-	if offset < currentOffset {
-		return
-	}
-	currentOffset = offset
+func (t *Telegram) setOffset(offset int64) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.offset = offset
+
+	return os.WriteFile(offsetFilePath, []byte(strconv.FormatInt(offset, 10)), 0644)
 }
 func (t *Telegram) GetUpdates() ([]InputMessage, error) {
-	url := fmt.Sprintf("%s?offset=%d&timeout=30", t.botUrl("getUpdates"), getOffset()+1)
+	url := t.botUrl(fmt.Sprintf("getUpdates?offset=%d&timeout=30", t.getOffset()+1))
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -4282,10 +4444,24 @@ func (t *Telegram) GetUpdates() ([]InputMessage, error) {
 
 	lenResults := len(result.Result)
 	if lenResults != 0 {
-		setOffset(int64(result.Result[lenResults-1].UpdateID))
+		if err := t.setOffset(int64(result.Result[lenResults-1].UpdateID)); err != nil {
+			return nil, err
+		}
 	}
 
 	return result.Result, nil
+}
+func (t *Telegram) GetSimpleUpdates() ([]SimpleInputMessage, error) {
+	var result []SimpleInputMessage
+	messages, err := t.GetUpdates()
+	if err != nil {
+		return nil, err
+	}
+	for _, message := range messages {
+		simple := InputMessageToSimpleInputMessage(&message)
+		result = append(result, simple)
+	}
+	return result, nil
 }
 
 type InputMessages struct {
@@ -4323,9 +4499,13 @@ type InputMessage struct {
 	} `json:"message"`
 }
 
-func (inputMessage *InputMessage) New(inputBodyBytes *[]byte) error {
-
-	return json.Unmarshal(*inputBodyBytes, inputMessage)
+func NewInputMessage(inputBodyBytes *[]byte) (*InputMessage, error) {
+	result := &InputMessage{}
+	err := json.Unmarshal(*inputBodyBytes, result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal input body: %w", err)
+	}
+	return result, nil
 }
 
 type SimpleInputMessage struct {
@@ -4336,29 +4516,34 @@ type SimpleInputMessage struct {
 	Text        string   `json:"text"`
 }
 
-func (simpleInputMessage *SimpleInputMessage) FromInputMessage(inputMessage *InputMessage) {
-	//fmt.Println(inputMessage)
-	simpleInputMessage.ChatID = inputMessage.Message.Chat.ID
-	simpleInputMessage.MessageID = inputMessage.Message.MessageID
+func NewSimpleInputMessage(inputBodyBytes *[]byte) (*SimpleInputMessage, error) {
+	inputMessage, err := NewInputMessage(inputBodyBytes)
+	if err != nil {
+		return nil, err
+	}
+	simpleInputMessage := InputMessageToSimpleInputMessage(inputMessage)
+	return &simpleInputMessage, nil
+}
 
-	//simpleInputMessage.ClickButton = false
-	//simpleInputMessage.Params = []
-	simpleInputMessage.Text = inputMessage.Message.Text
+func InputMessageToSimpleInputMessage(inputMessage *InputMessage) SimpleInputMessage {
+	simple := SimpleInputMessage{
+		ChatID:    inputMessage.Message.Chat.ID,
+		MessageID: inputMessage.Message.MessageID,
+		Text:      inputMessage.Message.Text,
+		// ClickButton: false, // default
+		// Params = [],
+	}
 
 	if inputMessage.Message.Contact.UserID != 0 {
-		simpleInputMessage.ClickButton = true
-		simpleInputMessage.Text = "contact"
-		simpleInputMessage.Params = []string{
+		simple.ClickButton = true
+		simple.Text = "contact"
+		simple.Params = []string{
 			strconv.Itoa(inputMessage.Message.Contact.UserID),
 			inputMessage.Message.Contact.PhoneNumber,
 		}
 	}
 
-}
-func (simpleInputMessage *SimpleInputMessage) New(inputBodyBytes *[]byte) {
-	inputMessage := &InputMessage{}
-	inputMessage.New(inputBodyBytes)
-	simpleInputMessage.FromInputMessage(inputMessage)
+	return simple
 }
 
 

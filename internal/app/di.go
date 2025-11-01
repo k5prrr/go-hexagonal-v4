@@ -5,17 +5,19 @@ import (
 	"app/internal/app/adapter/api"
 	"app/internal/app/core/port"
 	"app/internal/app/core/usecase"
+	"app/internal/app/worker/telegram"
 	"app/internal/repository/postgres"
 	"app/pkg/database"
 	"fmt"
 )
 
 type dependencyInjection struct {
-	router  *api.Router
-	useCase port.IUseCase
-	config  *AppConfig
-	db      database.IDB
-	repo    port.IRepo
+	router    *api.Router
+	useCase   port.IUseCase
+	config    *AppConfig
+	db        database.IDB
+	repo      port.IRepo
+	telegramW *telegram.TelegramWorker
 }
 
 func NewDependencyInjection(config *AppConfig) *dependencyInjection {
@@ -60,4 +62,14 @@ func (d *dependencyInjection) DB() database.IDB {
 		d.db = db
 	}
 	return d.db
+}
+
+func (d *dependencyInjection) TelegramWorker() *telegram.TelegramWorker {
+	if d.telegramW == nil {
+		if d.config.TGToken == "" {
+			panic("TELEGRAM_TOKEN is required")
+		}
+		d.telegramW = telegram.NewTelegramWorker(d.config.TGToken, d.UseCase())
+	}
+	return d.telegramW
 }

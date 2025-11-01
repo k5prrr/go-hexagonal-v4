@@ -44,13 +44,11 @@ func (t *Telegram) loadOffset() {
 
 	data, err := os.ReadFile(offsetFilePath)
 	if err != nil {
-		// Файл не существует или ошибка — начинаем с 0
 		t.offset = 0
 		return
 	}
 
-	str := string(data)
-	str = strings.TrimSpace(str)
+	str := strings.TrimSpace(string(data))
 	if str == "" {
 		t.offset = 0
 		return
@@ -64,7 +62,6 @@ func (t *Telegram) loadOffset() {
 
 	t.offset = parsed
 }
-
 func (t *Telegram) botUrl(command string) string {
 	return fmt.Sprintf(
 		"https://api.telegram.org/bot%s/%s",
@@ -73,7 +70,7 @@ func (t *Telegram) botUrl(command string) string {
 	)
 }
 
-func (t *Telegram) SendMassage(chatID int, message string, replyMarkup string) (string, error) {
+func (t *Telegram) SendMessage(chatID int, message string, replyMarkup string) (string, error) {
 	// Создаём данные сообщения
 	messageMap := map[string]string{
 		"chat_id": strconv.Itoa(chatID),
@@ -113,7 +110,6 @@ func (t *Telegram) SendMassage(chatID int, message string, replyMarkup string) (
 
 	return string(responseBody), nil
 }
-
 func (t *Telegram) SendPhoto(chatID int, urlPhoto string, message string, replyMarkup string) (string, error) {
 	// Создаём данные сообщения
 	messageMap := map[string]string{
@@ -156,6 +152,7 @@ func (t *Telegram) SendPhoto(chatID int, urlPhoto string, message string, replyM
 
 	return string(responseBody), nil
 }
+
 func (t *Telegram) getOffset() int64 {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
@@ -206,6 +203,18 @@ func (t *Telegram) GetUpdates() ([]InputMessage, error) {
 
 	return result.Result, nil
 }
+func (t *Telegram) GetSimpleUpdates() ([]SimpleInputMessage, error) {
+	var result []SimpleInputMessage
+	messages, err := t.GetUpdates()
+	if err != nil {
+		return nil, err
+	}
+	for _, message := range messages {
+		simple := InputMessageToSimpleInputMessage(&message)
+		result = append(result, simple)
+	}
+	return result, nil
+}
 
 type InputMessages struct {
 	Ok     bool           `json:"ok"`
@@ -242,9 +251,13 @@ type InputMessage struct {
 	} `json:"message"`
 }
 
-func (inputMessage *InputMessage) New(inputBodyBytes *[]byte) error {
-
-	return json.Unmarshal(*inputBodyBytes, inputMessage)
+func NewInputMessage(inputBodyBytes *[]byte) (*InputMessage, error) {
+	result := &InputMessage{}
+	err := json.Unmarshal(*inputBodyBytes, result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal input body: %w", err)
+	}
+	return result, nil
 }
 
 type SimpleInputMessage struct {
@@ -255,27 +268,32 @@ type SimpleInputMessage struct {
 	Text        string   `json:"text"`
 }
 
-func (simpleInputMessage *SimpleInputMessage) FromInputMessage(inputMessage *InputMessage) {
-	//fmt.Println(inputMessage)
-	simpleInputMessage.ChatID = inputMessage.Message.Chat.ID
-	simpleInputMessage.MessageID = inputMessage.Message.MessageID
+func NewSimpleInputMessage(inputBodyBytes *[]byte) (*SimpleInputMessage, error) {
+	inputMessage, err := NewInputMessage(inputBodyBytes)
+	if err != nil {
+		return nil, err
+	}
+	simpleInputMessage := InputMessageToSimpleInputMessage(inputMessage)
+	return &simpleInputMessage, nil
+}
 
-	//simpleInputMessage.ClickButton = false
-	//simpleInputMessage.Params = []
-	simpleInputMessage.Text = inputMessage.Message.Text
+func InputMessageToSimpleInputMessage(inputMessage *InputMessage) SimpleInputMessage {
+	simple := SimpleInputMessage{
+		ChatID:    inputMessage.Message.Chat.ID,
+		MessageID: inputMessage.Message.MessageID,
+		Text:      inputMessage.Message.Text,
+		// ClickButton: false, // default
+		// Params = [],
+	}
 
 	if inputMessage.Message.Contact.UserID != 0 {
-		simpleInputMessage.ClickButton = true
-		simpleInputMessage.Text = "contact"
-		simpleInputMessage.Params = []string{
+		simple.ClickButton = true
+		simple.Text = "contact"
+		simple.Params = []string{
 			strconv.Itoa(inputMessage.Message.Contact.UserID),
 			inputMessage.Message.Contact.PhoneNumber,
 		}
 	}
 
-}
-func (simpleInputMessage *SimpleInputMessage) New(inputBodyBytes *[]byte) {
-	inputMessage := &InputMessage{}
-	inputMessage.New(inputBodyBytes)
-	simpleInputMessage.FromInputMessage(inputMessage)
+	return simple
 }
