@@ -1,6 +1,9 @@
 package port
 
-import "context"
+import (
+	"app/internal/app/core/domain"
+	"context"
+)
 
 // Так, давай на первых этапах IUseCase будет как общий, а потом разделим
 type IUseCase interface {
@@ -10,4 +13,7 @@ type IUseCase interface {
 }
 type IRepo interface {
 	AddCodeCheckPhone(ctx context.Context, code, codeType string) error
+	GetCodeByCode(ctx context.Context, code string) (*domain.AuthCode, error)
+	UpdateChatIDByCode(ctx context.Context, code string, chatID int) error
+	UpdatePhoneByChatID(ctx context.Context, chatID int, phone string) error
 }

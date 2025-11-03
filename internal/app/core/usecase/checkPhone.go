@@ -26,10 +26,28 @@ func (u *UseCase) CreateCodeCheckPhone(ctx context.Context, action string) (stri
 }
 
 func (u *UseCase) AddChatIdByCodeCheckPhone(ctx context.Context, code string, chatId int) error {
+
+	_, err := u.repo.GetCodeByCode(ctx, code)
+	if err != nil {
+		return fmt.Errorf("code not found: %w", err)
+	}
+
+	// Обновляем UUID (в котором храним chatId как строку)
+	err = u.repo.UpdateChatIDByCode(ctx, code, chatId)
+	if err != nil {
+		return fmt.Errorf("failed to update chat_id: %w", err)
+	}
+
 	return nil
 }
 
 func (u *UseCase) AddPhoneByChatId(ctx context.Context, chatId int, phone string) error {
+	// Находим запись по chatId (хранится в uuid)
+	err := u.repo.UpdatePhoneByChatID(ctx, chatId, phone)
+	if err != nil {
+		return fmt.Errorf("failed to update phone by chat_id: %w", err)
+	}
+
 	return nil
 }
 

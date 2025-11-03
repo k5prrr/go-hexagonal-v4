@@ -2234,10 +2234,21 @@ func (u *UseCase) CreateCodeCheckPhone(ctx context.Context, action string) (stri
 }
 
 func (u *UseCase) AddChatIdByCodeCheckPhone(ctx context.Context, code string, chatId int) error {
+	находит через repo запись у которой нужный код
+	если её нет возвращает ошибку
+
+	если запись есть, через репо добавляет chatId
+	если при добавлении ошибка, возвращает её
+
 	return nil
 }
 
 func (u *UseCase) AddPhoneByChatId(ctx context.Context, chatId int, phone string) error {
+	находит через repo запись с текущим чат ид
+	если записи нет, то возвращает ошибку,
+	если есть, то добавляет туда номер
+	если есть ошибка при добавлении, то возвращает её
+
 	return nil
 }
 
@@ -5129,7 +5140,7 @@ APP_POSTGRES_HOST=localhost
 # Telegram
 TELEGRAM_TOKEN=
 TELEGRAM_WEBHOOK=true
-
+TELEGRAM_TIMEOUT=4
 
 
 --- Содержимое файла ./projectForGPT.txt ---
@@ -5150,7 +5161,8 @@ up:
 	$(CONTAINER_ENGINE) ps -a
 base:
 	$(COMPOSE) down
-	$(COMPOSE) -f ./docker/db.yml up -d
+	$(COMPOSE) -f "$(CURDIR)/docker/db.yml" up -d
+	# $(COMPOSE) -f "$(pwd)/docker/db.yml" up -d
 	$(CONTAINER_ENGINE) ps -a
 
 build:
@@ -5200,3 +5212,4 @@ gpt:
 
 
 --- Содержимое файла ./data/telegramOffset.txt ---
+507041872
