@@ -11,7 +11,8 @@ up:
 	$(CONTAINER_ENGINE) ps -a
 base:
 	$(COMPOSE) down
-	$(COMPOSE) -f ./docker/db.yml up -d
+	$(COMPOSE) -f "$(CURDIR)/docker/db.yml" up -d
+	# $(COMPOSE) -f "$(pwd)/docker/db.yml" up -d
 	$(CONTAINER_ENGINE) ps -a
 
 build:

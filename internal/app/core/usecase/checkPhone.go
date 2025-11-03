@@ -26,11 +26,11 @@ func (u *UseCase) CreateCodeCheckPhone(ctx context.Context, action string) (stri
 }
 
 func (u *UseCase) AddChatIdByCodeCheckPhone(ctx context.Context, code string, chatId int) error {
-
+	return nil
 }
 
 func (u *UseCase) AddPhoneByChatId(ctx context.Context, chatId int, phone string) error {
-
+	return nil
 }
 
 func randStringHex(nBytes int) (string, error) {

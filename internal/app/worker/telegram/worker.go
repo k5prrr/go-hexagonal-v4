@@ -15,6 +15,7 @@ import (
 type TelegramWorker struct {
 	tg      *telegram.Telegram
 	useCase port.IUseCase
+	cancel  context.CancelFunc
 }
 
 func NewTelegramWorker(token string, useCase port.IUseCase) *TelegramWorker {
@@ -28,6 +29,7 @@ func NewTelegramWorker(token string, useCase port.IUseCase) *TelegramWorker {
 }
 
 func (t *TelegramWorker) Start(ctx context.Context, timeoutSec int) {
+	ctx, t.cancel = context.WithCancel(ctx)
 	interval := time.Duration(timeoutSec) * time.Second
 
 	ticker := time.NewTicker(interval)
@@ -44,7 +46,9 @@ func (t *TelegramWorker) Start(ctx context.Context, timeoutSec int) {
 	}
 }
 func (t *TelegramWorker) Stop() {
-
+	if t.cancel != nil {
+		t.cancel()
+	}
 }
 
 func (t *TelegramWorker) Step() {
@@ -64,7 +68,11 @@ func (t *TelegramWorker) Step() {
 			log.Printf("Received /start with code: %s from chatID=%d", code, message.ChatID)
 
 			ctx := context.Context(context.Background())
-			t.useCase.AddUserIdCodeCheckPhone(ctx, code, message.ChatID)
+			err := t.useCase.AddChatIdByCodeCheckPhone(ctx, code, message.ChatID)
+			if err != nil {
+				log.Printf("failed AddChatIdByCodeCheckPhone: %v", err)
+			}
+			continue
 		}
 		if message.Text == "contact" &&
 			message.ClickButton &&
@@ -77,8 +85,13 @@ func (t *TelegramWorker) Step() {
 			)
 
 			ctx := context.Context(context.Background())
-			t.useCase.AddPhoneByChatId(ctx, message.ChatID, message.Params[1])
+			err := t.useCase.AddPhoneByChatId(ctx, message.ChatID, message.Params[1])
+			if err != nil {
+				log.Printf("failed AddPhoneByChatId: %v", err)
+			}
+			continue
 		}
+		// Тут если он уже есть в системе и номера нет, то отправлять его на отправку номера
 	}
 }
 func (t *TelegramWorker) acceptCode(chatID int, code string) {

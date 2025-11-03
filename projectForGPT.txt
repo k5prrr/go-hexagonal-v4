@@ -1761,7 +1761,7 @@ services:
     restart: always
     image: docker.io/library/postgres:15.2
     env_file:
-      - ./../.env
+      - ../.env
     volumes:
       - ./../pg_data:/var/lib/postgresql/data
     ports:
@@ -2234,11 +2234,11 @@ func (u *UseCase) CreateCodeCheckPhone(ctx context.Context, action string) (stri
 }
 
 func (u *UseCase) AddChatIdByCodeCheckPhone(ctx context.Context, code string, chatId int) error {
-
+	return nil
 }
 
 func (u *UseCase) AddPhoneByChatId(ctx context.Context, chatId int, phone string) error {
-
+	return nil
 }
 
 func randStringHex(nBytes int) (string, error) {
@@ -2269,8 +2269,8 @@ import "context"
 // Так, давай на первых этапах IUseCase будет как общий, а потом разделим
 type IUseCase interface {
 	CreateCodeCheckPhone(ctx context.Context, t string) (string, error)
-	AddUserIdCodeCheckPhone(ctx context.Context, code string, id int)
-	AddPhoneByChatId(ctx context.Context, id int, s string)
+	AddChatIdByCodeCheckPhone(ctx context.Context, code string, id int) error
+	AddPhoneByChatId(ctx context.Context, id int, s string) error
 }
 type IRepo interface {
 	AddCodeCheckPhone(ctx context.Context, code, codeType string) error
@@ -2316,6 +2316,7 @@ import (
 type TelegramWorker struct {
 	tg      *telegram.Telegram
 	useCase port.IUseCase
+	cancel  context.CancelFunc
 }
 
 func NewTelegramWorker(token string, useCase port.IUseCase) *TelegramWorker {
@@ -2329,6 +2330,7 @@ func NewTelegramWorker(token string, useCase port.IUseCase) *TelegramWorker {
 }
 
 func (t *TelegramWorker) Start(ctx context.Context, timeoutSec int) {
+	ctx, t.cancel = context.WithCancel(ctx)
 	interval := time.Duration(timeoutSec) * time.Second
 
 	ticker := time.NewTicker(interval)
@@ -2345,7 +2347,9 @@ func (t *TelegramWorker) Start(ctx context.Context, timeoutSec int) {
 	}
 }
 func (t *TelegramWorker) Stop() {
-
+	if t.cancel != nil {
+		t.cancel()
+	}
 }
 
 func (t *TelegramWorker) Step() {
@@ -2365,7 +2369,11 @@ func (t *TelegramWorker) Step() {
 			log.Printf("Received /start with code: %s from chatID=%d", code, message.ChatID)
 
 			ctx := context.Context(context.Background())
-			t.useCase.AddUserIdCodeCheckPhone(ctx, code, message.ChatID)
+			err := t.useCase.AddChatIdByCodeCheckPhone(ctx, code, message.ChatID)
+			if err != nil {
+				log.Printf("failed AddChatIdByCodeCheckPhone: %v", err)
+			}
+			continue
 		}
 		if message.Text == "contact" &&
 			message.ClickButton &&
@@ -2378,8 +2386,13 @@ func (t *TelegramWorker) Step() {
 			)
 
 			ctx := context.Context(context.Background())
-			t.useCase.AddPhoneByChatId(ctx, message.ChatID, message.Params[1])
+			err := t.useCase.AddPhoneByChatId(ctx, message.ChatID, message.Params[1])
+			if err != nil {
+				log.Printf("failed AddPhoneByChatId: %v", err)
+			}
+			continue
 		}
+		// Тут если он уже есть в системе и номера нет, то отправлять его на отправку номера
 	}
 }
 func (t *TelegramWorker) acceptCode(chatID int, code string) {
@@ -2808,11 +2821,16 @@ func New(config *AppConfig) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
-	a.telegramW.Start(ctx, a.config.TGTimeoutSec)
-	return a.server.Run(ctx)
-}
+	tgCtx, tgCancel := context.WithCancel(ctx)
+	defer tgCancel()
 
-// Инициализация сервера
+	a.telegramW.Start(tgCtx, a.config.TGTimeoutSec)
+
+	err := a.server.Run(ctx) // block
+	a.telegramW.Stop()
+
+	return err
+}
 
 
 

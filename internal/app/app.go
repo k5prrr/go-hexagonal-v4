@@ -38,8 +38,13 @@ func New(config *AppConfig) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
-	a.telegramW.Start(ctx, a.config.TGTimeoutSec)
-	return a.server.Run(ctx)
-}
+	tgCtx, tgCancel := context.WithCancel(ctx)
+	defer tgCancel()
 
-// Инициализация сервера
+	a.telegramW.Start(tgCtx, a.config.TGTimeoutSec)
+
+	err := a.server.Run(ctx) // block
+	a.telegramW.Stop()
+
+	return err
+}
