@@ -4,58 +4,47 @@ package app
 import (
 	"app/internal/app/adapter/api"
 	"app/internal/app/core/port"
+	"app/internal/app/core/service"
 	"app/internal/app/core/usecase"
 	"app/internal/app/worker/telegram"
 	"app/internal/repository/postgres"
 	"app/pkg/database"
+	"app/pkg/env"
+	"app/pkg/server"
 	"fmt"
 )
 
 type dependencyInjection struct {
-	router    *api.Router
-	useCase   port.IUseCase
-	config    *AppConfig
-	db        database.IDB
-	repo      port.IRepo
-	telegramW *telegram.TelegramWorker
+	conf           *env.Env
+	db             database.IDB
+	repo           port.IRepo
+	service        *service.Service
+	useCase        port.IUseCase
+	router         *api.Router
+	server         *server.Server
+	telegramWorker *telegram.TelegramWorker
 }
 
-func NewDependencyInjection(config *AppConfig) *dependencyInjection {
-	return &dependencyInjection{
-		config: config,
-	}
+func NewDependencyInjection() *dependencyInjection {
+	return &dependencyInjection{}
 }
-
-func (d *dependencyInjection) Router() *api.Router {
-	if d.router == nil {
-		d.router = api.NewRouter(d.UseCase())
+func (d *dependencyInjection) Conf() *env.Env {
+	if d.conf == nil {
+		d.conf = env.New(".env")
 	}
-	return d.router
+	return d.conf
 }
-func (d *dependencyInjection) UseCase() port.IUseCase {
-	if d.useCase == nil {
-		d.useCase = usecase.NewUseCase(d.Repo())
-	}
-	return d.useCase
-}
-func (d *dependencyInjection) Repo() port.IRepo {
-	if d.repo == nil {
-		d.repo = postgres.NewRepo(d.DB())
-	}
-	return d.repo
-}
-
 func (d *dependencyInjection) DB() database.IDB {
 	if d.db == nil {
-		dbConf := &database.DBConfig{
-			Name:     d.config.PGDb,
-			User:     d.config.PGUser,
-			Password: d.config.PGPassword,
-			Host:     d.config.PGHost,
-			Port:     d.config.PGPort,
-		}
+		conf := d.Conf()
 
-		db, err := database.NewDB(dbConf)
+		db, err := database.New(&database.DBConfig{
+			User:     conf.Get("POSTGRES_USER", ""),
+			Password: conf.Get("POSTGRES_PASSWORD", ""),
+			Name:     conf.Get("POSTGRES_DB", ""),
+			Host:     conf.Get("APP_POSTGRES_HOST", "localhost"),
+			Port:     conf.Get("APP_POSTGRES_PORT", "15432"),
+		})
 		if err != nil {
 			panic(fmt.Sprintf("failed to initialize database: %v", err))
 		}
@@ -63,13 +52,45 @@ func (d *dependencyInjection) DB() database.IDB {
 	}
 	return d.db
 }
-
-func (d *dependencyInjection) TelegramWorker() *telegram.TelegramWorker {
-	if d.telegramW == nil {
-		if d.config.TGToken == "" {
-			panic("TELEGRAM_TOKEN is required")
-		}
-		d.telegramW = telegram.NewTelegramWorker(d.config.TGToken, d.UseCase())
+func (d *dependencyInjection) Repo() port.IRepo {
+	if d.repo == nil {
+		d.repo = postgres.New(d.DB())
 	}
-	return d.telegramW
+	return d.repo
+}
+func (d *dependencyInjection) Services() *service.Service {
+	if d.service == nil {
+		d.service = service.New(d.Repo())
+	}
+	return d.service
+}
+func (d *dependencyInjection) UseCase() port.IUseCase {
+	if d.useCase == nil {
+		d.useCase = usecase.New(d.Services(), d.Repo())
+	}
+	return d.useCase
+}
+func (d *dependencyInjection) Router() *api.Router {
+	if d.router == nil {
+		d.router = api.New(d.UseCase())
+	}
+	return d.router
+}
+func (d *dependencyInjection) Server() *server.Server {
+	if d.server == nil {
+		conf := d.Conf()
+		d.server = server.New(
+			conf.Get("APP_SERVER_ADDRESS", ":8080"),
+			d.Router(),
+			0,
+		)
+	}
+	return d.server
+}
+func (d *dependencyInjection) TelegramWorker() *telegram.TelegramWorker {
+	if d.telegramWorker == nil {
+		conf := d.Conf()
+		d.telegramWorker = telegram.New(conf.Get("TELEGRAM_TOKEN", ""), d.UseCase())
+	}
+	return d.telegramWorker
 }

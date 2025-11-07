@@ -18,7 +18,7 @@ type TelegramWorker struct {
 	cancel  context.CancelFunc
 }
 
-func NewTelegramWorker(token string, useCase port.IUseCase) *TelegramWorker {
+func New(token string, useCase port.IUseCase) *TelegramWorker {
 	return &TelegramWorker{
 		tg: telegram.New(&telegram.TelegramConfig{
 			Token:   token,
@@ -28,7 +28,7 @@ func NewTelegramWorker(token string, useCase port.IUseCase) *TelegramWorker {
 	}
 }
 
-func (t *TelegramWorker) Start(ctx context.Context, timeoutSec int) {
+func (t *TelegramWorker) Run(ctx context.Context, timeoutSec int) {
 	ctx, t.cancel = context.WithCancel(ctx)
 	interval := time.Duration(timeoutSec) * time.Second
 

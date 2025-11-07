@@ -6,6 +6,7 @@ package env
 import (
 	"bufio"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -52,7 +53,20 @@ func (e *Env) init() {
 func (e *Env) Get(key, defaultValue string) string {
 	result, exists := os.LookupEnv(key)
 	if !exists {
-		result = defaultValue
+		return defaultValue
 	}
+	return result
+}
+func (e *Env) Int(key string, defaultValue int) int {
+	resultStr, exists := os.LookupEnv(key)
+	if !exists {
+		return defaultValue
+	}
+
+	result, err := strconv.Atoi(resultStr)
+	if err != nil {
+		return defaultValue
+	}
+
 	return result
 }

@@ -16,7 +16,7 @@ type Repo struct {
 	db database.IDB
 }
 
-func NewRepo(db database.IDB) *Repo {
+func New(db database.IDB) *Repo {
 	return &Repo{db: db}
 }
 

@@ -12,17 +12,17 @@ type Router struct {
 	path    string
 }
 
-func NewRouter(useCase port.IUseCase) *Router {
+func New(useCase port.IUseCase) *Router {
 	r := &Router{
 		mux:     http.NewServeMux(),
 		useCase: useCase,
 		path:    "/api/v2/",
 	}
-	r.initRouter()
+	r.init()
 	return r
 }
 
-func (r *Router) initRouter() {
+func (r *Router) init() {
 	r.mux.Handle(fmt.Sprintf("%sdoc", r.path), http.FileServer(http.Dir("./static/")))
 	r.testRouter()
 	r.authRouter()

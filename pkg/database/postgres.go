@@ -49,7 +49,7 @@ type pgxDB struct {
 	pool *pgxpool.Pool
 }
 
-func NewDB(conf *DBConfig) (IDB, error) {
+func New(conf *DBConfig) (IDB, error) {
 	if conf == nil {
 		return nil, errors.New("DBConfig is nil")
 	}
