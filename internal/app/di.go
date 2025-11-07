@@ -72,7 +72,8 @@ func (d *dependencyInjection) UseCase() port.IUseCase {
 }
 func (d *dependencyInjection) Router() *api.Router {
 	if d.router == nil {
-		d.router = api.New(d.UseCase())
+		conf := d.Conf()
+		d.router = api.New(d.UseCase(), conf.Get("APP_API_PATH", "/"))
 	}
 	return d.router
 }

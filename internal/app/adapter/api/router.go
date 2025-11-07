@@ -12,18 +12,34 @@ type Router struct {
 	path    string
 }
 
-func New(useCase port.IUseCase) *Router {
+func New(useCase port.IUseCase, path string) *Router {
 	r := &Router{
 		mux:     http.NewServeMux(),
 		useCase: useCase,
-		path:    "/api/v2/",
+		path:    path,
 	}
 	r.init()
 	return r
 }
 
 func (r *Router) init() {
-	r.mux.Handle(fmt.Sprintf("%sdoc", r.path), http.FileServer(http.Dir("./static/")))
+	/*	r.mux.Handle(
+		fmt.Sprintf("%sdoc/", r.path),
+		http.FileServer(http.Dir("./static/")),
+	)*/
+	docPath := fmt.Sprintf("%sdoc/", r.path)
+	// 1. Редирект /api/v2/doc → /api/v2/doc/
+	r.mux.HandleFunc(fmt.Sprintf("%sdoc", r.path), func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, docPath, http.StatusMovedPermanently)
+	})
+
+	// 2. Файловый сервер с отрезанием префикса
+	r.mux.Handle(docPath,
+		http.StripPrefix(docPath,
+			http.FileServer(http.Dir("./static/")),
+		),
+	)
+
 	r.testRouter()
 	r.authRouter()
 	r.telegramRouter()
