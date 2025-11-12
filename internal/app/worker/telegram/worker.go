@@ -94,9 +94,3 @@ func (t *TelegramWorker) Step() {
 		// Тут если он уже есть в системе и номера нет, то отправлять его на отправку номера
 	}
 }
-func (t *TelegramWorker) acceptCode(chatID int, code string) {
-
-}
-func (t *TelegramWorker) acceptContact(chatID int, phone string) {
-
-}

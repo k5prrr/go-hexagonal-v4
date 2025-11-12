@@ -26,7 +26,10 @@ func (u *UseCase) CreateCodeCheckPhone(ctx context.Context, action string) (stri
 }
 
 func (u *UseCase) AddChatIdByCodeCheckPhone(ctx context.Context, code string, chatId int) error {
-
+	/*
+		Добавляет тому, кто есть,
+		если нету, то возврат ошибки
+	*/
 	_, err := u.repo.GetCodeByCode(ctx, code)
 	if err != nil {
 		return fmt.Errorf("code not found: %w", err)
@@ -57,4 +60,8 @@ func randStringHex(nBytes int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+func (*UseCase) SendPasswordByPhone(ctx context.Context, phone int64) error {
+	return nil
 }

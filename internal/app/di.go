@@ -8,6 +8,7 @@ import (
 	"app/internal/app/core/usecase"
 	"app/internal/app/worker/telegram"
 	"app/internal/repository/postgres"
+	"app/migration"
 	"app/pkg/database"
 	"app/pkg/env"
 	"app/pkg/server"
@@ -17,6 +18,7 @@ import (
 type dependencyInjection struct {
 	conf           *env.Env
 	db             database.IDB
+	migration      *migration.Migration
 	repo           port.IRepo
 	service        *service.Service
 	useCase        port.IUseCase
@@ -51,6 +53,14 @@ func (d *dependencyInjection) DB() database.IDB {
 		d.db = db
 	}
 	return d.db
+}
+
+func (d *dependencyInjection) Migration() *migration.Migration {
+	if d.migration == nil {
+		db := d.DB()
+		d.migration = migration.New(db.Pool())
+	}
+	return d.migration
 }
 func (d *dependencyInjection) Repo() port.IRepo {
 	if d.repo == nil {

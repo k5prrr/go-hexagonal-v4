@@ -1,6 +1,6 @@
 # make run // use
 CONTAINER_ENGINE = podman#docker
-COMPOSE = $(CONTAINER_ENGINE)-compose
+COMPOSE = docker-compose
 BINARY = app
 GOPATH = $(HOME)/go
 LINT_PATH = $(GOPATH)/bin/golangci-lint

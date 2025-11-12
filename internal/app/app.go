@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 )
 
 type App struct {
@@ -16,6 +17,11 @@ func New() *App {
 
 func (a *App) Run(ctx context.Context) error {
 	conf := a.di.Conf()
+
+	migration := a.di.Migration()
+	if err := migration.Run(ctx); err != nil {
+		return fmt.Errorf("migration failed: %w", err)
+	}
 
 	telegramWorker := a.di.TelegramWorker()
 	go telegramWorker.Run(ctx, conf.Int("TELEGRAM_TIMEOUT", 4))

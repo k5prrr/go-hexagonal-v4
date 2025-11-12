@@ -39,6 +39,7 @@ func (c *DBConfig) Validate() error {
 }
 
 type IDB interface {
+	Pool() *pgxpool.Pool
 	Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
 	Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error)
 	QueryRow(ctx context.Context, query string, args ...any) pgx.Row
@@ -76,6 +77,9 @@ func New(conf *DBConfig) (IDB, error) {
 	}
 
 	return &pgxDB{pool: pool}, nil
+}
+func (d *pgxDB) Pool() *pgxpool.Pool {
+	return d.pool
 }
 
 func (d *pgxDB) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
