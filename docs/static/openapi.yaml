@@ -1,0 +1,175 @@
+openapi: 3.0.3
+info:
+  title: TradeIN 2.0 API
+  description: |
+    API для регистрации пользователей, клиентов и интеграции с Telegram.
+    Реализовано по принципам REST, но с упором на бизнес-сценарии.
+  version: "1.0.0"
+  contact:
+    name: Evgenii Ivlev
+    email: k5pr@ya.ru
+servers:
+  - url: http://localhost:8080
+    description: Локальная разработка
+  - url: /
+    description: Текущий
+paths:
+  /api/v2/increment:
+    get:
+      tags:
+        - Test
+      summary: Инкремент тестового счётчика
+      description: Возвращает текущее значение глобального атомарного счётчика.
+      responses:
+        "200":
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value:
+                    type: integer
+                    example: 42
+        "405":
+          description: Метод не разрешён
+
+  /api/v2/registration/linkcheckphone:
+    post:
+      tags:
+        - Auth
+      summary: Генерация кода для проверки телефона (регистрация)
+      description: Создаёт одноразовый код, который можно использовать для привязки Telegram-аккаунта или SMS-подтверждения.
+      responses:
+        "200":
+          description: Код успешно сгенерирован
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    format: uuid
+                    example: "a1b2c3d4e5f678901234567890abcdef"
+        "500":
+          description: Ошибка генерации кода
+
+  /api/v2/addclient/linkcheckphone:
+    post:
+      tags:
+        - Auth
+      summary: Генерация кода для проверки телефона (добавление клиента)
+      description: Аналогично регистрации — создаёт код для клиентского сценария.
+      responses:
+        "200":
+          description: Код успешно сгенерирован
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    format: uuid
+                    example: "f0e9d8c7b6a543210987654321fedcba"
+        "500":
+          description: Ошибка генерации кода
+
+  /api/v2/sendpassword:
+    post:
+      tags:
+        - Auth
+      summary: Отправка пароля по номеру телефона
+      description: Принимает номер телефона и инициирует отправку временного пароля (SMS/email/Telegram).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                  description: Номер телефона (цифры, без + и пробелов)
+                  example: "79123456789"
+              required:
+                - phone
+      responses:
+        "200":
+          description: Запрос принят, пароль будет отправлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: integer
+                    enum: [1]
+                    example: 1
+        "400":
+          description: Неверный формат запроса
+        "500":
+          description: Ошибка отправки
+
+  /api/v2/telegram:
+    post:
+      tags:
+        - Telegram
+      summary: Приём входящих сообщений от Telegram (webhook)
+      description: Эндпоинт для получения обновлений от Telegram Bot API. Может использоваться как для webhook'ов, так и для fallback polling (если webhook выключен).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Структура обновления от Telegram — см. официальную документацию Bot API.
+              example:
+                update_id: 123456789
+                message:
+                  message_id: 42
+                  from:
+                    id: 123456789
+                    is_bot: false
+                    first_name: "Evgenii"
+                  chat:
+                    id: 123456789
+                    type: "private"
+                  date: 1717020800
+                  text: "/start abcdef1234567890"
+      responses:
+        "200":
+          description: Обновление обработано
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+        "400":
+          description: Некорректное обновление
+        "500":
+          description: Внутренняя ошибка обработки
+
+components:
+  schemas: {}
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+tags:
+  - name: Test
+    description: Вспомогательные эндпоинты для проверки работоспособности
+  - name: Auth
+    description: Аутентификация и верификация пользователей и клиентов
+  - name: Telegram
+    description: Интеграция с Telegram Bot API
+
+externalDocs:
+  description: Дополнительная документация (инструкции, диаграммы)
+  url: https://h7team.ru/

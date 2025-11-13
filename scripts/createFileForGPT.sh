@@ -1,56 +1,39 @@
 #!/bin/bash
 # bash scripts/createFileForGPT.sh
 
-OUTPUT_FILE=./projectForGPT.txt
-EXCLUDE_DIRS=(".git" "pg_data" "config" "bin" ".idea" "static")
-EXCLUDE_FILES=("go.sum" "go.mod" "*.log" "*.tmp" ".env")
+OUTPUT_FILE=projectForGPT.txt
+EXCLUDE_DIRS=(".git" "pg_data" "config" "bin" ".idea" "static" "docs/static/swagger")
+EXCLUDE_FILES=(OUTPUT_FILE "go.sum" "go.mod" "*.log" "*.tmp" ".env" "000002_cities.up.sql")
 
 # Очистка/создание файла вывода
 echo "--- Дерево файлов ---" > "$OUTPUT_FILE"
 tree >> "$OUTPUT_FILE"
 
-# Формируем выражения для find
-build_exclude_expr() {
-  local type="$1"
-  shift
-  local expr=()
-  for name in "$@"; do
-    expr+=("-name" "$name" "-o")
-  done
-  (( ${#expr[@]} )) && unset 'expr[-1]' # удалить последний "-o"
-  echo "(" -type "$type" "${expr[@]}" ")" -prune -o
-}
+touch "$OUTPUT_FILE"
+> "$OUTPUT_FILE"
 
-# Строим команду find
-FIND_CMD=("find" ".")
+echo "--- Дерево файлов ---" > "$OUTPUT_FILE"
+tree >> "$OUTPUT_FILE"
 
-# Добавляем исключения для директорий
-if [[ ${#EXCLUDE_DIRS[@]} -gt 0 ]]; then
-  IFS=' ' read -r -a exclude_dirs_expr <<< "$(build_exclude_expr d "${EXCLUDE_DIRS[@]}")"
-  FIND_CMD+=("${exclude_dirs_expr[@]}")
-fi
+# Формируем команду find
+FIND_CMD=(find . -type f)
 
-# Ищем только файлы
-FIND_CMD+=("-type" "f")
 
-# Добавляем исключения для файлов
-if [[ ${#EXCLUDE_FILES[@]} -gt 0 ]]; then
-  # Создаём отдельное выражение для исключений файлов
-  EXPR=()
-  for file in "${EXCLUDE_FILES[@]}"; do
-    EXPR+=("-name" "$file" "-o")
-  done
-  unset 'EXPR[-1]' # удаляем последний "-o"
+for dir in "${EXCLUDE_DIRS[@]}"; do
+	FIND_CMD+=(-not -path "*/${dir}/*" -not -path "./${dir}")
+done
 
-  # Добавляем инвертированное условие
-  FIND_CMD+=("!" "(" "${EXPR[@]}" ")")
-fi
+for pattern in "${EXCLUDE_FILES[@]}"; do
+	FIND_CMD+=(-not -name "$pattern")
+done
 
-# Добавляем выполнение cat
-FIND_CMD+=("-exec" "sh" "-c" 'printf "\n\n\n--- Содержимое файла %s ---\n" "$1"; cat "$1"' "_" "{}" ";")
 
-#echo "Выполняется команда:"
-#printf "%q " "${FIND_CMD[@]}"; echo
+FIND_CMD+=(-exec sh -c '
+file="$1"
+printf "\n\n\n--- Содержимое файла %s ---\n" "$file"
+cat "$file"
+' _ {} \;)
 
-# Выполняем команду
 "${FIND_CMD[@]}" >> "$OUTPUT_FILE"
+
+echo "cat $OUTPUT_FILE"

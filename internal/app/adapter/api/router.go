@@ -23,28 +23,13 @@ func New(useCase port.IUseCase, path string) *Router {
 }
 
 func (r *Router) init() {
-	/*	r.mux.Handle(
-		fmt.Sprintf("%sdoc/", r.path),
-		http.FileServer(http.Dir("./static/")),
-	)*/
-	docPath := fmt.Sprintf("%sdoc/", r.path)
-	// 1. Редирект /api/v2/doc → /api/v2/doc/
-	r.mux.HandleFunc(fmt.Sprintf("%sdoc", r.path), func(w http.ResponseWriter, req *http.Request) {
-		http.Redirect(w, req, docPath, http.StatusMovedPermanently)
-	})
-
-	// 2. Файловый сервер с отрезанием префикса
-	r.mux.Handle(docPath,
-		http.StripPrefix(docPath,
-			http.FileServer(http.Dir("./static/")),
-		),
-	)
-
+	r.static()
 	r.testRouter()
 	r.authRouter()
 	r.telegramRouter()
 }
 
+// Для быстрого добавления по нужному пути
 func (r *Router) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) {
 	r.mux.HandleFunc(fmt.Sprintf("%s%s", r.path, path), f)
 }

@@ -202,7 +202,7 @@ func (m *Migration) loadPendingMigrations(applied map[int64]bool) ([]migration, 
 			vStr = "0" // случай "000_.up.sql" → версия 0
 		}
 
-		// Парсим как int64 - позволяет иметь до 9 квинтиллионов миграций (хватит 😉)
+		// Парсим как int64 - позволяет иметь до 9 квинтиллионов миграций
 		v, err := strconv.ParseInt(vStr, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid version prefix in %s (expected digits only): %w", name, err)

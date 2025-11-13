@@ -1,0 +1,5 @@
+
+BEGIN;
+DROP TABLE IF EXISTS "cities";
+DROP SEQUENCE IF EXISTS cities_id_seq;
+COMMIT;

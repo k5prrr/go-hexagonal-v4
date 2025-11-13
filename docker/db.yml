@@ -8,7 +8,7 @@ services:
       - ../.env
     volumes:
       - ./../pg_data:/var/lib/postgresql/data
-      - ./../migration/migrations:/docker-entrypoint-initdb.d
+      - ./../migration/docker:/docker-entrypoint-initdb.d
     ports:
       - "15432:5432"
 
