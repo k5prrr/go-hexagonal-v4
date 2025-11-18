@@ -43,6 +43,8 @@ type IDB interface {
 	Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
 	Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error)
 	QueryRow(ctx context.Context, query string, args ...any) pgx.Row
+	Begin(ctx context.Context) (pgx.Tx, error)
+	Time() string
 	Close()
 }
 
@@ -83,6 +85,9 @@ func (d *pgxDB) Pool() *pgxpool.Pool {
 }
 
 func (d *pgxDB) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
+	if d.pool == nil {
+		return nil, errors.New("database pool is not initialized")
+	}
 	return d.pool.Query(ctx, query, args...)
 }
 
@@ -92,6 +97,16 @@ func (d *pgxDB) Exec(ctx context.Context, query string, args ...any) (pgconn.Com
 
 func (d *pgxDB) QueryRow(ctx context.Context, query string, args ...any) pgx.Row {
 	return d.pool.QueryRow(ctx, query, args...)
+}
+
+func (d *pgxDB) Begin(ctx context.Context) (pgx.Tx, error) {
+	return d.pool.Begin(ctx)
+}
+
+func (d *pgxDB) Time() string {
+	currentTime := time.Now()
+	
+	return currentTime.Format("2006-01-02 15:04:05")
 }
 
 func (d *pgxDB) Close() {

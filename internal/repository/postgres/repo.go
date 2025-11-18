@@ -3,6 +3,7 @@ package postgres
 import (
 	"app/internal/app/core/domain"
 	"app/pkg/database"
+	"app/pkg/utilities"
 	"context"
 	"errors"
 	"fmt"
@@ -87,4 +88,52 @@ func (r *Repo) UpdatePhoneByChatID(ctx context.Context, chatID int, phone string
 		return fmt.Errorf("failed to update phone: %w", err)
 	}
 	return nil
+}
+
+func (r *Repo) CreateUser(ctx context.Context, tgID int64, phone int64) (int64, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx) // откатится, если не вызван tx.Commit()
+
+	// 1. Создаём пользователя (телефон — строка, а не int64!)
+	var userID int64
+	err = tx.QueryRow(ctx, `
+		INSERT INTO users (phone, created_at, updated_at)
+		VALUES ($1, NOW(), NOW())
+		RETURNING id
+	`, strconv.FormatInt(phone, 10)).Scan(&userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert user: %w", err)
+	}
+
+
+	tokenTime := r.db.Time() // for UNIQUE
+	token := fmt.Sprintf(
+		"%s%s",
+		tokenTime,
+		utilities.RandomString(64 - len(tokenTime)),
+		)
+
+	// 2. Создаём запись в auth
+	_, err = tx.Exec(ctx,
+		`
+		INSERT INTO auth (user_id, tg_id, token, created_at, updated_at)
+		VALUES ($1, $2, $3, NOW(), NOW())
+		`,
+		strconv.FormatInt(userID, 10),
+		strconv.FormatInt(tgID, 10),
+		token,
+		)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert auth: %w", err)
+	}
+
+	// 3. Коммитим транзакцию
+	if err = tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return userID, nil
 }

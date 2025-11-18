@@ -70,10 +70,10 @@ func (t *Telegram) botUrl(command string) string {
 	)
 }
 
-func (t *Telegram) SendMessage(chatID int, message string, replyMarkup string) (string, error) {
+func (t *Telegram) SendMessage(chatID int64, message string, replyMarkup string) (string, error) {
 	// Создаём данные сообщения
 	messageMap := map[string]string{
-		"chat_id": strconv.Itoa(chatID),
+		"chat_id": strconv.FormatInt(chatID, 10),
 		"text":    message,
 	}
 	if replyMarkup != "" {
@@ -110,10 +110,10 @@ func (t *Telegram) SendMessage(chatID int, message string, replyMarkup string) (
 
 	return string(responseBody), nil
 }
-func (t *Telegram) SendPhoto(chatID int, urlPhoto string, message string, replyMarkup string) (string, error) {
+func (t *Telegram) SendPhoto(chatID int64, urlPhoto string, message string, replyMarkup string) (string, error) {
 	// Создаём данные сообщения
 	messageMap := map[string]string{
-		"chat_id": strconv.Itoa(chatID),
+		"chat_id": strconv.FormatInt(chatID, 10),
 		"photo":   urlPhoto,
 	}
 	if message != "" {
@@ -222,11 +222,11 @@ type InputMessages struct {
 }
 
 type InputMessage struct {
-	UpdateID int `json:"update_id"`
+	UpdateID int64 `json:"update_id"`
 	Message  struct {
-		MessageID int `json:"message_id"`
+		MessageID int64 `json:"message_id"`
 		From      struct {
-			ID           int    `json:"id"`
+			ID           int64  `json:"id"`
 			IsBot        bool   `json:"is_bot"`
 			FirstName    string `json:"first_name"`
 			LastName     string `json:"last_name"`
@@ -234,19 +234,19 @@ type InputMessage struct {
 			LanguageCode string `json:"language_code"`
 		} `json:"from"`
 		Chat struct {
-			ID        int    `json:"id"`
+			ID        int64  `json:"id"`
 			FirstName string `json:"first_name"`
 			LastName  string `json:"last_name"`
 			Username  string `json:"username"`
 			Type      string `json:"type"`
 		} `json:"chat"`
-		Date    int    `json:"date"`
+		Date    int64  `json:"date"`
 		Text    string `json:"text"`
 		Contact struct {
 			PhoneNumber string `json:"phone_number"`
 			FirstName   string `json:"first_name"`
 			LastName    string `json:"last_name"`
-			UserID      int    `json:"user_id"`
+			UserID      int64  `json:"user_id"`
 		} `json:"contact"`
 	} `json:"message"`
 }
@@ -261,8 +261,8 @@ func NewInputMessage(inputBodyBytes *[]byte) (*InputMessage, error) {
 }
 
 type SimpleInputMessage struct {
-	ChatID      int      `json:"chat_id"`
-	MessageID   int      `json:"message_id"`
+	ChatID      int64    `json:"chat_id"`
+	MessageID   int64    `json:"message_id"`
 	ClickButton bool     `json:"click_button"`
 	Params      []string `json:"button_params"`
 	Text        string   `json:"text"`
@@ -290,7 +290,7 @@ func InputMessageToSimpleInputMessage(inputMessage *InputMessage) SimpleInputMes
 		simple.ClickButton = true
 		simple.Text = "contact"
 		simple.Params = []string{
-			strconv.Itoa(inputMessage.Message.Contact.UserID),
+			strconv.FormatInt(inputMessage.Message.Contact.UserID, 10),
 			inputMessage.Message.Contact.PhoneNumber,
 		}
 	}

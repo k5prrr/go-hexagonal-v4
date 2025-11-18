@@ -15,5 +15,6 @@ func New(service *service.Service, repo port.IRepo) port.IUseCase {
 
 	return &UseCase{
 		service: service,
-		repo:    repo}
+		repo:    repo,
+	}
 }

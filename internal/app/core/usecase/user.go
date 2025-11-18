@@ -62,6 +62,17 @@ func randStringHex(nBytes int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func (*UseCase) SendPasswordByPhone(ctx context.Context, phone int64) error {
+func (u *UseCase) SendAuthCode(ctx context.Context, phone int64) error {
 	return nil
+}
+
+func (u *UseCase) CreateUser(ctx context.Context, tgID, phone int64) (int64, error) {
+	_, _, _ = ctx, tgID, phone
+	id, err := u.repo.CreateUser(ctx, tgID, phone)
+	if err != nil {
+
+		return 0, fmt.Errorf("failed repo CreateUser: %w", err)
+	}
+
+	return id, nil
 }

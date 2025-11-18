@@ -19,14 +19,14 @@ CREATE TABLE "public"."users" (
     "name" character varying(128),
     "middle_name" character varying(128),
 
-    "phone" character varying(32),
+    "phone" character varying(32) UNIQUE NOT NULL,
     "email" character varying(64),
 
     "birth_date" date,
     "gender_id" integer,
 
     "parent_id" bigint,
-    "group_id" bigint,
+    "role_id" bigint,
 
     "created_at" timestamptz NOT NULL DEFAULT NOW(),
     "updated_at" timestamptz NOT NULL DEFAULT NOW(),
@@ -35,7 +35,7 @@ CREATE TABLE "public"."users" (
 );
 CREATE INDEX idx_users_email ON users (email);
 CREATE INDEX idx_users_phone ON users (phone);
-CREATE INDEX idx_users_group_id ON users (group_id);
+CREATE INDEX idx_users_role_id ON users (role_id);
 COMMENT ON TABLE "public"."users" IS 'Пользователи системы';
 
 
@@ -44,9 +44,9 @@ CREATE TABLE auth (
     id bigint DEFAULT nextval('auth_id_seq') NOT NULL,
     user_id bigint NOT NULL,
 
-    login VARCHAR(255) UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    secret TEXT,
+    tg_id bigint UNIQUE NOT NULL,
+    code character varying(16),
+    token character varying(64) NOT NULL,
 
     last_login_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT NOW(),
@@ -58,18 +58,18 @@ COMMENT ON TABLE "public"."auth" IS 'Авторизация и Аутентиф�
 
 
 
-CREATE SEQUENCE user_groups_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1;
-CREATE TABLE "public"."user_groups" (
-                                        "id" bigint DEFAULT nextval('user_groups_id_seq') NOT NULL,
+CREATE SEQUENCE user_roles_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1;
+CREATE TABLE "public"."user_roles" (
+                                        "id" bigint DEFAULT nextval('user_roles_id_seq') NOT NULL,
                                         "name" character varying(16) NOT NULL,
-                                        CONSTRAINT "user_groups_pkey" PRIMARY KEY ("id")
+                                        CONSTRAINT "user_roles_pkey" PRIMARY KEY ("id")
 );
-INSERT INTO "user_groups" ("id", "name") VALUES
+INSERT INTO "user_roles" ("id", "name") VALUES
                                              (1,	'Админ'),
                                              (2,	'Менеджер'),
                                              (3,	'Продавец'),
                                              (4,	'Новый');
-COMMENT ON TABLE "public"."user_groups" IS 'Должности/Роли пользователей системы';
+COMMENT ON TABLE "public"."user_roles" IS 'Должности/Роли пользователей системы';
 
 
 
@@ -179,13 +179,13 @@ COMMENT ON TABLE "public"."refunds" IS 'Возвраты';
 
 -- Магазины
 
-CREATE SEQUENCE shop_groups_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
-CREATE TABLE "public"."shop_groups" (
-                                        "id" integer DEFAULT nextval('shop_groups_id_seq') NOT NULL,
+CREATE SEQUENCE shop_roles_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
+CREATE TABLE "public"."shop_roles" (
+                                        "id" integer DEFAULT nextval('shop_roles_id_seq') NOT NULL,
                                         "name" character varying(32) NOT NULL,
-                                        CONSTRAINT "shop_groups_pkey" PRIMARY KEY ("id")
+                                        CONSTRAINT "shop_roles_pkey" PRIMARY KEY ("id")
 );
-COMMENT ON TABLE "public"."shop_groups" IS 'Сети магазинов';
+COMMENT ON TABLE "public"."shop_roles" IS 'Сети магазинов';
 
 
 

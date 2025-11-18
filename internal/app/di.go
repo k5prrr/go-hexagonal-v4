@@ -83,7 +83,11 @@ func (d *dependencyInjection) UseCase() port.IUseCase {
 func (d *dependencyInjection) Router() *api.Router {
 	if d.router == nil {
 		conf := d.Conf()
-		d.router = api.New(d.UseCase(), conf.Get("APP_API_PATH", "/"))
+		d.router = api.New(
+			d.UseCase(),
+			conf.Get("APP_API_PATH", "/"),
+			conf.Get("TELEGRAM_BOT", "https://t.me/a"),
+		)
 	}
 	return d.router
 }

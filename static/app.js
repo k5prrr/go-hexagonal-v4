@@ -8,7 +8,8 @@ const options = {
     apiUrl: '/api/v2/',
 }
 var storage = {
-    idb: null
+    idb: null,
+    tgBot:''
 }
 
 const views = {
@@ -137,18 +138,61 @@ let pages = {
       utils.setText(`
 <div class="loginBox">
     <h1 class="logo_text">Trade-In</h1>
-    <form class="form1 block" id="formLogin" onsubmit="app.login(this);return false">
-        <label class="name required">Телефон</label>
-        <div class="value"><input name="login" oninput="this.value = utils.formatPhone(this.value)" type="text" value="" maxlength="64"></div>
-        <br>
-        <label class="name required">Пароль</label>
-        <div class="value"><input name="password" type="password" value="" maxlength="64"></div>
+    <form class="form1 block" id="formLogin" onsubmit="app.loginPhone(this);return false">
+        <label class="name">Телефон</label>
+        <div class="value"><input name="phone" oninput="this.value = utils.formatPhone(this.value)" type="text" value="" maxlength="64"></div>
+        <!--<br>
+        label class="name required">Пароль</label>
+        <div class="value"><input name="password" type="password" value="" maxlength="64"></div-->
         <div class="buttons">
             <button class="btn btn-mark">Войти</button>
         </div>
         <div class="buttons">
-            <button class="btn" type="button" onmousedown="pages.registration()">Регистрация</button>
-            <button class="btn" type="button" onmousedown="app.loginTest()">Восстановить пароль</button>
+            <button class="btn" type="button" onmousedown="pages.loginRules()">Регистрация</button>
+            <button class="btn" type="button" onmousedown="app.loginTest()">Тест</button>
+        </div>
+    </form>
+</div>
+      `);
+    },
+    loginRules: data => {
+        utils.setText(`
+<div class="loginBox">
+    <h1 class="logo_text">Trade-In</h1>
+    <form class="form1 block" id="formLogin" onsubmit="pages.login();app.registrationTG();return false">
+        <label class="name">Правила</label>
+        <div class="value">Попадёте в телеграм бот, там нажмите старт, после отправить номер. Тогда, при входе, можно будет вводить свой номер</div>
+        <div class="form-check">
+          <input type="checkbox" id="policy_check" required="">
+          <label for="policy_check" class="form-check-label">Я даю свое <a href="/policy/privacy_consent2.pdf" target="_blank">согласие на обработку персональных данных</a> и соглашаюсь с <a href="/policy/policy2.pdf" target="_blank">условиями политики конфиденциальности</a></label>
+        </div>
+        <!--<br>
+        label class="name required">Пароль</label>
+        <div class="value"><input name="password" type="password" value="" maxlength="64"></div-->
+        <div class="buttons">
+            <button class="btn btn-mark">Согласен</button>
+            <button class="btn" type="button" onmousedown="pages.login()">Назад</button>
+        </div>
+    </form>
+</div>
+      `);
+    },
+
+    loginCode: data => {
+        utils.setText(`
+<div class="loginBox">
+    <h1 class="logo_text">Trade-In</h1>
+    <form class="form1 block" id="formLogin" onsubmit="app.loginCode(this);return false">
+        <label class="name">Введите код</label>
+        <div class="value"><input name="code" oninput="this.value = utils.toInt(this.value)" type="text" value="" maxlength="6"></div>
+        
+        <div class="value">Код Вам пришёл в телеграм бот, привязанный к номеру </div>
+        <!--<br>
+        label class="name required">Пароль</label>
+        <div class="value"><input name="password" type="password" value="" maxlength="64"></div-->
+        <div class="buttons">
+            <button class="btn btn-mark">Вход</button>
+            <button class="btn" type="button" onmousedown="pages.login()">Назад</button>
         </div>
     </form>
 </div>
@@ -441,7 +485,7 @@ ${views.header(data)}
         `)
         
     },
-    refund:data => {
+    refund: data => {
         if (!data) data = {};
         
         utils.setText(`
@@ -1535,13 +1579,11 @@ ${views.header(data)}
 
 const app = {
     version: options.version,
-    options: {
-      apiUrl: "/api/v1.php",
-    },
     main: () => {
         
         pages.login()
         notify.start()
+        app.updateTgBot()
 /*      let hashArray = location.hash.split('/')
       if (hashArray[0] == '#createNewPassword') {
         const urlWithoutHash = window.location.href.split('#')[0]
@@ -1564,29 +1606,36 @@ const app = {
 
     login: (form) => {
         const data = utils.formData(form)
-        if (data.login == 'test' || data.login == '1') {
-            app.loginTest()
-            return;
-        }
-        notify.err('Неверный логин или пароль')
 
-        if  (data.login.length == 18 && data.password.trim() == '') {
-            phone = data.login.replace(/\D/g, '')
-            app.ajax('sendpassword', {phone:phone}, answer => {
-                console.log(answer)
-            })
+        if (data.phone.length != 18 ) {
+            notify.err('Введите корректный номер телефона')
+            return
         }
+
+        pages.loginCode();
+
+
+        phone = utils.toInt(data.phone)
+        app.ajax('sendAuthCode', {phone:phone}, answer => {
+            console.log(answer)
+        })
+
     },
     loginTest: () => {
         pages.help()
         notify.message('Тестовый режим')
     },
 
+    updateTgBot: () => {
+        app.ajax('bot', {}, answer => {
+            storage.tgBot = answer.bot
+        })
+    },
     ajax: (action, data, callback, arg) => {
       if (!data) data = {};
       data.action = action;
   
-      ajax.json(`${app.options.apiUrl}${action}`, data, callback, arg);
+      ajax.json(`${options.apiUrl}${action}`, data, callback, arg);
     },
     checkAuth: (callback) => {
       if (!myCookie.check("userID") || !myCookie.check("userKEY")) {
@@ -1733,7 +1782,7 @@ const app = {
             addButton.disabled = true;
             addButton.textContent = "Отправка ...";
         }
-        ajax.sendFormData(app.options.apiUrl, form, app.receiver.searchUserByBrCode);
+        ajax.sendFormData(options.apiUrl, form, app.receiver.searchUserByBrCode);
     },
     editClientDefect: (form) => {
         const addButton = document.getElementById('addButton');
@@ -1741,7 +1790,7 @@ const app = {
             addButton.disabled = true;
             addButton.textContent = "Отправка ...";
         }
-        ajax.sendFormData(app.options.apiUrl, form, app.receiver.editClientDefect);
+        ajax.sendFormData(options.apiUrl, form, app.receiver.editClientDefect);
     },
     
     updateCities: () => {
@@ -1775,7 +1824,7 @@ const app = {
       const addButton = document.getElementById('addButton');
       addButton.disabled = true;
       addButton.textContent = "Отправка...";
-      ajax.sendFormData(app.options.apiUrl, form, app.receiver.add);
+      ajax.sendFormData(options.apiUrl, form, app.receiver.add);
     },
   
     fillForm: () => {
@@ -1828,6 +1877,10 @@ const app = {
         inputElement.value = newValue;
         inputElement.setSelectionRange(cursorPosition, cursorPosition);
       }
+    },
+    registrationTG: () => {
+        // открыть ссылку тг регистрации
+        utils.openLink(`${storage.tgBot}?start=registration`)
     },
     handleBlur: (inputElement) => {
       inputElement.value = inputElement.value.trimEnd();
