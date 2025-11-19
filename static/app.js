@@ -1604,7 +1604,7 @@ const app = {
       app.updateProducts()*/
     },
 
-    login: (form) => {
+    loginPhone: (form) => {
         const data = utils.formData(form)
 
         if (data.phone.length != 18 ) {
@@ -1615,9 +1615,33 @@ const app = {
         pages.loginCode();
 
 
-        phone = utils.toInt(data.phone)
-        app.ajax('sendAuthCode', {phone:phone}, answer => {
+        currentUser.phone = utils.toInt(data.phone)
+
+        app.ajax('sendAuthCode', {phone:currentUser.phone}, answer => {
             console.log(answer)
+        })
+
+    },
+    loginCode: (form) => {
+        const data = utils.formData(form)
+
+        if (data.code.length != 6 ) {
+            notify.err('Введите корректный код')
+            return
+        }
+        pages.login();
+
+        currentUser.code = utils.toInt(data.code)
+
+        app.ajax('loginCode', {phone:currentUser.phone, code:currentUser.code}, answer => {
+            if (answer.err) {
+                console.log(answer)
+                return
+            }
+
+            if (answer.login) {
+                pages.help()
+            }
         })
 
     },
@@ -2458,6 +2482,13 @@ window.addEventListener('error', function(event) {
         body: formData
     })
 })
+}
+
+const currentUser = {
+    id: 0,
+    name: 'Test',
+    role: '', //  ||  || admin
+    phone: 0,
 }
 
 app.main()

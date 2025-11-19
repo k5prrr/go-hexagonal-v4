@@ -1,4 +1,4 @@
-package telegram
+package telegramW
 
 import (
 	"app/internal/app/core/port"
@@ -19,12 +19,9 @@ type TelegramWorker struct {
 	cancel  context.CancelFunc
 }
 
-func New(token string, useCase port.IUseCase) *TelegramWorker {
+func New(tg      *telegram.Telegram, useCase port.IUseCase) *TelegramWorker {
 	return &TelegramWorker{
-		tg: telegram.New(&telegram.TelegramConfig{
-			Token:   token,
-			Webhook: false,
-		}),
+		tg: tg,
 		useCase: useCase,
 	}
 }

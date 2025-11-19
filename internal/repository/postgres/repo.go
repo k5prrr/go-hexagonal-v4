@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -21,6 +20,7 @@ func New(db database.IDB) *Repo {
 	return &Repo{db: db}
 }
 
+/*
 func (r *Repo) AddCodeCheckPhone(ctx context.Context, code, codeType string) error {
 	query := `
 		INSERT INTO auth_codes (code, type, uuid, phone, created_at, updated_at)
@@ -89,6 +89,7 @@ func (r *Repo) UpdatePhoneByChatID(ctx context.Context, chatID int, phone string
 	}
 	return nil
 }
+*/
 
 func (r *Repo) CreateUser(ctx context.Context, tgID int64, phone int64) (int64, error) {
 	tx, err := r.db.Begin(ctx)
@@ -108,13 +109,12 @@ func (r *Repo) CreateUser(ctx context.Context, tgID int64, phone int64) (int64, 
 		return 0, fmt.Errorf("failed to insert user: %w", err)
 	}
 
-
 	tokenTime := r.db.Time() // for UNIQUE
 	token := fmt.Sprintf(
 		"%s%s",
 		tokenTime,
-		utilities.RandomString(64 - len(tokenTime)),
-		)
+		utilities.RandomString(64-len(tokenTime)),
+	)
 
 	// 2. Создаём запись в auth
 	_, err = tx.Exec(ctx,
@@ -125,7 +125,7 @@ func (r *Repo) CreateUser(ctx context.Context, tgID int64, phone int64) (int64, 
 		strconv.FormatInt(userID, 10),
 		strconv.FormatInt(tgID, 10),
 		token,
-		)
+	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert auth: %w", err)
 	}
@@ -136,4 +136,38 @@ func (r *Repo) CreateUser(ctx context.Context, tgID int64, phone int64) (int64, 
 	}
 
 	return userID, nil
+}
+
+func (r *Repo) UserByPhone(ctx context.Context, phone int64) (*domain.User, error) {
+	// Преобразуем int64 → строку, как в CreateUser
+	phoneStr := strconv.FormatInt(phone, 10)
+
+	var user domain.User
+	err := r.db.QueryRow(ctx, `
+		SELECT id, family_name, name, middle_name, phone, email, birth_date,
+		       parent_id, gender_id, role_id, created_at, updated_at, deleted_at
+		FROM users
+		WHERE phone = $1 AND deleted_at IS NULL LIMIT 1
+	`, phoneStr).Scan(
+		&user.ID,
+		&user.FamilyName,
+		&user.Name,
+		&user.MiddleName,
+		&user.Phone,
+		&user.Email,
+		&user.BirthDate,
+		&user.ParentID,
+		&user.GenderID,
+		&user.RoleID,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("user with phone %s not found", phoneStr)
+		}
+		return nil, fmt.Errorf("failed to query user by phone: %w", err)
+	}
+
+	return &user, nil
 }

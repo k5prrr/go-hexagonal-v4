@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"app/internal/app/core/domain"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"math/rand"
 )
 
+/*
 func (u *UseCase) CreateCodeCheckPhone(ctx context.Context, action string) (string, error) {
 	if action != "registration" && action != "client" {
 		return "", errors.New("invalid action")
@@ -26,10 +28,10 @@ func (u *UseCase) CreateCodeCheckPhone(ctx context.Context, action string) (stri
 }
 
 func (u *UseCase) AddChatIdByCodeCheckPhone(ctx context.Context, code string, chatId int) error {
-	/*
-		Добавляет тому, кто есть,
-		если нету, то возврат ошибки
-	*/
+
+	//	Добавляет тому, кто есть,
+	//	если нету, то возврат ошибки
+
 	_, err := u.repo.GetCodeByCode(ctx, code)
 	if err != nil {
 		return fmt.Errorf("code not found: %w", err)
@@ -53,6 +55,7 @@ func (u *UseCase) AddPhoneByChatId(ctx context.Context, chatId int, phone string
 
 	return nil
 }
+*/
 
 func randStringHex(nBytes int) (string, error) {
 	b := make([]byte, nBytes)
@@ -62,7 +65,37 @@ func randStringHex(nBytes int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
+func (u *UseCase) userAuthByPhone(ctx context.Context, phone int64) (domain.User, domain.Auth, error) {
+	user, err := u.repo.UserByPhone(ctx, phone)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get user by phone: %w", err)
+	}
+
+	auth, err := u.repo.AuthByUserID(ctx, user.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get auth by user id: %w", err)
+	}
+
+	return user, auth, nil
+}
+
 func (u *UseCase) SendAuthCode(ctx context.Context, phone int64) error {
+
+	user, auth, err := u.userAuthByPhone(ctx, phone)
+	if err != nil {
+		return fmt.Errorf("get user auth by phone: %w", err)
+	}
+
+	code := rand.Intn(900000) + 100000
+
+	if err = u.repo.UpdateAuthCode(auth.ID, code); err != nil {
+		return fmt.Errorf("update auth code: %w", err)
+	}
+
+	if _, err = u.tg.SendMessage(auth.TgID, fmt.Sprintf("Код: %d", code)); err != nil {
+		return fmt.Errorf("send message: %w", err)
+	}
+
 	return nil
 }
 
@@ -75,4 +108,7 @@ func (u *UseCase) CreateUser(ctx context.Context, tgID, phone int64) (int64, err
 	}
 
 	return id, nil
+}
+func (u *UseCase) LoginCode(ctx context.Context, phone int64, code int64) (int64, string, error) {
+	return 0, "", nil
 }

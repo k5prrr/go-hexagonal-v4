@@ -6,12 +6,13 @@ import (
 	"app/internal/app/core/port"
 	"app/internal/app/core/service"
 	"app/internal/app/core/usecase"
-	"app/internal/app/worker/telegram"
+	"app/internal/app/worker/telegramW"
 	"app/internal/repository/postgres"
 	"app/migration"
 	"app/pkg/database"
 	"app/pkg/env"
 	"app/pkg/server"
+	"app/pkg/telegram"
 	"fmt"
 )
 
@@ -20,11 +21,12 @@ type dependencyInjection struct {
 	db             database.IDB
 	migration      *migration.Migration
 	repo           port.IRepo
+	tg             port.Itg
 	service        *service.Service
 	useCase        port.IUseCase
 	router         *api.Router
 	server         *server.Server
-	telegramWorker *telegram.TelegramWorker
+	telegramWorker *telegramW.TelegramWorker
 }
 
 func NewDependencyInjection() *dependencyInjection {
@@ -68,6 +70,16 @@ func (d *dependencyInjection) Repo() port.IRepo {
 	}
 	return d.repo
 }
+func (d *dependencyInjection) Tg() port.Itg {
+	if d.tg == nil {
+		conf := d.Conf()
+		d.tg = telegram.New(&telegram.TelegramConfig{
+			Token:   conf.Get("TELEGRAM_TOKEN", ""),
+			Webhook: false,
+		})
+	}
+	return d.tg
+}
 func (d *dependencyInjection) Services() *service.Service {
 	if d.service == nil {
 		d.service = service.New(d.Repo())
@@ -76,7 +88,7 @@ func (d *dependencyInjection) Services() *service.Service {
 }
 func (d *dependencyInjection) UseCase() port.IUseCase {
 	if d.useCase == nil {
-		d.useCase = usecase.New(d.Services(), d.Repo())
+		d.useCase = usecase.New(d.Services(), d.Repo(), d.Tg())
 	}
 	return d.useCase
 }
@@ -102,10 +114,10 @@ func (d *dependencyInjection) Server() *server.Server {
 	}
 	return d.server
 }
-func (d *dependencyInjection) TelegramWorker() *telegram.TelegramWorker {
+func (d *dependencyInjection) TelegramWorker() *telegramW.TelegramWorker {
 	if d.telegramWorker == nil {
 		conf := d.Conf()
-		d.telegramWorker = telegram.New(conf.Get("TELEGRAM_TOKEN", ""), d.UseCase())
+		d.telegramWorker = telegramW.New(d.Tg(), d.UseCase())
 	}
 	return d.telegramWorker
 }

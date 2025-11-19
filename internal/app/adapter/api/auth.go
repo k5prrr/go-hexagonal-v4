@@ -8,11 +8,13 @@ import (
 func (r *Router) authRouter() {
 	r.HandleFunc("registration/linkcheckphone", r.handleLinkCheckPhone)
 	r.HandleFunc("addclient/linkcheckphone", r.handleLinkCheckPhone)
+
 	r.HandleFunc("sendAuthCode", r.sendAuthCode)
+	r.HandleFunc("loginCode", r.loginCode)
 	r.HandleFunc("bot", r.showBot)
 }
 
-func (r *Router) showBot (w http.ResponseWriter, req *http.Request) {
+func (r *Router) showBot(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"bot": r.bot,
 	})
@@ -38,12 +40,13 @@ func (r *Router) handleLinkCheckPhone(w http.ResponseWriter, req *http.Request) 
 	})
 }
 
-type PhoneRequest struct {
+type AuthRequest struct {
 	Phone int64 `json:"phone"`
+	Code  int64 `json:"code"`
 }
 
 func (r *Router) sendAuthCode(w http.ResponseWriter, req *http.Request) {
-	request := PhoneRequest{}
+	request := AuthRequest{}
 	err := json.NewDecoder(req.Body).Decode(&request)
 	if err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
@@ -65,4 +68,30 @@ func (r *Router) sendAuthCode(w http.ResponseWriter, req *http.Request) {
 		"status": "success",
 	})*/
 	w.Write([]byte(`{}`))
+}
+
+func (r *Router) loginCode(w http.ResponseWriter, req *http.Request) {
+	request := AuthRequest{}
+	err := json.NewDecoder(req.Body).Decode(&request)
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+
+		return
+	}
+
+	ctx := req.Context()
+
+	id, token, err := r.useCase.LoginCode(ctx, request.Phone, request.Code)
+	if err != nil {
+		http.Error(w, "Failed LoginCode", http.StatusInternalServerError)
+
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id":    id,
+		"token": token,
+	})
+	//w.Write([]byte(`{}`))
 }

@@ -10,18 +10,17 @@ type User struct {
 	FamilyName  string
 	Name        string
 	MiddleName  string
-	Phone       string
+
+	Phone       int64
 	Email       string
 	BirthDate   *time.Time `json:"birth_date" gorm:"column:birth_date;type:date"` // может быть NULL
+
 	ParentID    *int64     `json:"parent_id" gorm:"column:parent_id"`             // может быть NULL
 	GenderID    *int       `json:"gender_id" gorm:"column:gender_id"`             // может быть NULL
-	GroupID     *int64     `json:"group_id" gorm:"column:group_id"`               // может быть NULL
-	LastLoginAt *time.Time `json:"last_login_at" gorm:"column:last_login_at"`     // может быть NULL
-	Key         string     `json:"key" gorm:"column:key;size:128"`
+	RoleID     *int64     `json:"role_id" gorm:"column:role_id"`               // может быть NULL
 
 	CreatedAt time.Time  `json:"created_at" gorm:"column:created_at;not null;autoCreateTime"`
 	UpdatedAt time.Time  `json:"updated_at" gorm:"column:updated_at;not null;autoUpdateTime"`
-	DeletedAt *time.Time `json:"deleted_at" gorm:"column:deleted_at;index"` // soft delete
 }
 
 func NewUser() *User {
