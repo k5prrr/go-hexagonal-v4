@@ -21,7 +21,8 @@ type dependencyInjection struct {
 	db             database.IDB
 	migration      *migration.Migration
 	repo           port.IRepo
-	tg             port.Itg
+	repoUser       port.IRepoUser
+	tg             *telegram.Telegram //port.Itg
 	service        *service.Service
 	useCase        port.IUseCase
 	router         *api.Router
@@ -70,7 +71,13 @@ func (d *dependencyInjection) Repo() port.IRepo {
 	}
 	return d.repo
 }
-func (d *dependencyInjection) Tg() port.Itg {
+func (d *dependencyInjection) RepoUser() port.IRepoUser {
+	if d.repoUser == nil {
+		d.repoUser = postgres.NewRepoUser(d.DB())
+	}
+	return d.repoUser
+}
+func (d *dependencyInjection) Tg() *telegram.Telegram {
 	if d.tg == nil {
 		conf := d.Conf()
 		d.tg = telegram.New(&telegram.TelegramConfig{
@@ -116,7 +123,6 @@ func (d *dependencyInjection) Server() *server.Server {
 }
 func (d *dependencyInjection) TelegramWorker() *telegramW.TelegramWorker {
 	if d.telegramWorker == nil {
-		conf := d.Conf()
 		d.telegramWorker = telegramW.New(d.Tg(), d.UseCase())
 	}
 	return d.telegramWorker

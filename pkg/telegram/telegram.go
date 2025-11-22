@@ -168,6 +168,7 @@ func (t *Telegram) setOffset(offset int64) error {
 }
 func (t *Telegram) GetUpdates() ([]InputMessage, error) {
 	url := t.botUrl(fmt.Sprintf("getUpdates?offset=%d&timeout=30", t.getOffset()+1))
+	// &timeout=30 Но с ним не всегда работает
 
 	resp, err := http.Get(url)
 	if err != nil {

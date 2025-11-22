@@ -24,19 +24,21 @@ func (r *Router) handleLinkCheckPhone(w http.ResponseWriter, req *http.Request) 
 	//w.WriteHeader(http.StatusOK)
 	//w.Write([]byte("OK"))
 
-	ctx := req.Context()
+	/*	ctx := req.Context()
 
-	code, err := r.useCase.CreateCodeCheckPhone(ctx, "registration")
-	if err != nil {
-		http.Error(w, "Failed to generate code", http.StatusInternalServerError)
+		code, err := r.useCase.CreateCodeCheckPhone(ctx, "registration")
+		if err != nil {
+			http.Error(w, "Failed to generate code", http.StatusInternalServerError)
 
-		return
-	}
+			return
+		}
+*/
+
 
 	// Например, вернуть код (в реальности — отправить SMS, а клиенту — UUID или токен)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"code": code, // или "message": "SMS sent"
+	json.NewEncoder(w).Encode(map[string]int{
+		"code": 132, // или "message": "SMS sent"
 	})
 }
 
@@ -54,14 +56,14 @@ func (r *Router) sendAuthCode(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ctx := req.Context()
+	//ctx := req.Context()
 
-	err = r.useCase.SendAuthCode(ctx, request.Phone)
+	/*err = r.useCase.SendAuthCode(ctx, request.Phone)
 	if err != nil {
 		http.Error(w, "Failed SendAuthCode", http.StatusInternalServerError)
 
 		return
-	}
+	}*/
 
 	w.Header().Set("Content-Type", "application/json")
 	/*json.NewEncoder(w).Encode(map[string]string{
@@ -79,19 +81,19 @@ func (r *Router) loginCode(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ctx := req.Context()
+	//ctx := req.Context()
 
-	id, token, err := r.useCase.LoginCode(ctx, request.Phone, request.Code)
+	/*id, token, err := r.useCase.LoginCode(ctx, request.Phone, request.Code)
 	if err != nil {
 		http.Error(w, "Failed LoginCode", http.StatusInternalServerError)
 
 		return
-	}
+	}*/
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":    id,
-		"token": token,
+		"id":    0,
+		"token": 0,
 	})
 	//w.Write([]byte(`{}`))
 }

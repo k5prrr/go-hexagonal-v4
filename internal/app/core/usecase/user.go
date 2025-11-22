@@ -1,12 +1,7 @@
 package usecase
 
 import (
-	"app/internal/app/core/domain"
 	"context"
-	"encoding/hex"
-	"errors"
-	"fmt"
-	"math/rand"
 )
 
 /*
@@ -57,6 +52,8 @@ func (u *UseCase) AddPhoneByChatId(ctx context.Context, chatId int, phone string
 }
 */
 
+
+/*
 func randStringHex(nBytes int) (string, error) {
 	b := make([]byte, nBytes)
 	if _, err := rand.Read(b); err != nil {
@@ -65,7 +62,7 @@ func randStringHex(nBytes int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func (u *UseCase) userAuthByPhone(ctx context.Context, phone int64) (domain.User, domain.Auth, error) {
+func (u *UseCase) userAuthByPhone(ctx context.Context, phone int64) (*domain.User, *domain.Auth, error) {
 	user, err := u.repo.UserByPhone(ctx, phone)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get user by phone: %w", err)
@@ -81,7 +78,7 @@ func (u *UseCase) userAuthByPhone(ctx context.Context, phone int64) (domain.User
 
 func (u *UseCase) SendAuthCode(ctx context.Context, phone int64) error {
 
-	user, auth, err := u.userAuthByPhone(ctx, phone)
+	_, auth, err := u.userAuthByPhone(ctx, phone)
 	if err != nil {
 		return fmt.Errorf("get user auth by phone: %w", err)
 	}
@@ -92,15 +89,20 @@ func (u *UseCase) SendAuthCode(ctx context.Context, phone int64) error {
 		return fmt.Errorf("update auth code: %w", err)
 	}
 
-	if _, err = u.tg.SendMessage(auth.TgID, fmt.Sprintf("Код: %d", code)); err != nil {
+	if _, err = u.tg.SendMessage(
+		auth.TgID,
+		fmt.Sprintf("Код: %d", code),
+		"",
+		); err != nil {
 		return fmt.Errorf("send message: %w", err)
 	}
 
 	return nil
 }
-
+*/
 func (u *UseCase) CreateUser(ctx context.Context, tgID, phone int64) (int64, error) {
-	_, _, _ = ctx, tgID, phone
+	return 0, nil
+	/*_, _, _ = ctx, tgID, phone
 	id, err := u.repo.CreateUser(ctx, tgID, phone)
 	if err != nil {
 
@@ -108,7 +110,13 @@ func (u *UseCase) CreateUser(ctx context.Context, tgID, phone int64) (int64, err
 	}
 
 	return id, nil
+
+	 */
 }
+
+/*
 func (u *UseCase) LoginCode(ctx context.Context, phone int64, code int64) (int64, string, error) {
 	return 0, "", nil
 }
+*/
+

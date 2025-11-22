@@ -24,7 +24,7 @@ func (a *App) Run(ctx context.Context) error {
 	}
 
 	telegramWorker := a.di.TelegramWorker()
-	go telegramWorker.Run(ctx, conf.Int("TELEGRAM_TIMEOUT", 4))
+	go telegramWorker.Run(ctx, conf.Int("TELEGRAM_TIMEOUT", 6))
 
 	server := a.di.Server()
 	err := server.Run(ctx) // block

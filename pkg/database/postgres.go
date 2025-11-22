@@ -48,6 +48,23 @@ type IDB interface {
 	Close()
 }
 
+type ICRUD interface {
+	Add(entity *any) (int64, error)
+
+	Get(id int64) (*any, error)
+	GetBy(filterKey, filterValue string) (*any, error)
+
+	List() (*[]any, error)
+	ListBy(filterKey, filterValue string) (*[]any, error)
+
+	Update(id int64, entity *any) error
+	UpdateBy(filterKey, filterValue string, entity *any) error
+
+	Delete(id int64) error
+	DeleteBy(filterKey, filterValue string) error
+}
+
+
 type pgxDB struct {
 	pool *pgxpool.Pool
 }
@@ -105,7 +122,7 @@ func (d *pgxDB) Begin(ctx context.Context) (pgx.Tx, error) {
 
 func (d *pgxDB) Time() string {
 	currentTime := time.Now()
-	
+
 	return currentTime.Format("2006-01-02 15:04:05")
 }
 
