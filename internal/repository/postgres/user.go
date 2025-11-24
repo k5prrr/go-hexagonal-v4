@@ -2,8 +2,7 @@ package postgres
 /*
 1 Меняем все RepoUser
 2 Меняем все domain.User
-3 Меняем содержимое создания NewRepo
-4 Меняем поля в Change
+3 Меняем поля в Change
 
 */
 import (
@@ -23,6 +22,7 @@ var (
 	ErrUnsupported  = errors.New("unsupported filter key")
 )
 
+// Change
 var allowedFilters = map[string]struct{}{
 	"id":          {},
 	"phone":       {},
@@ -31,7 +31,6 @@ var allowedFilters = map[string]struct{}{
 	"name":        {},
 }
 
-// validateFilterKey проверяет, можно ли использовать filterKey в WHERE.
 func validateFilterKey(key string) error {
 	if _, ok := allowedFilters[key]; !ok {
 		return fmt.Errorf("%w: %q", ErrUnsupported, key)
@@ -52,7 +51,7 @@ func NewRepoUser(db database.IDB) *RepoUser {
 		tableName: "users",
 		columns:   []string{"family_name", "name", "middle_name", "phone", "email",
 			"birth_date", "parent_id", "gender_id", "role_id",
-			"created_at", "updated_at"},,
+			"created_at", "updated_at"},
 	}
 }
 
