@@ -1,5 +1,11 @@
 package postgres
+/*
+1 Меняем все RepoUser
+2 Меняем все domain.User
+3 Меняем содержимое создания NewRepo
+4 Меняем поля в Change
 
+*/
 import (
 	"app/internal/app/core/domain"
 	"app/pkg/database"
@@ -36,16 +42,21 @@ func validateFilterKey(key string) error {
 type RepoUser struct {
 	db        database.IDB
 	tableName string
+	columns   []string
 }
 
+// Change
 func NewRepoUser(db database.IDB) *RepoUser {
 	return &RepoUser{
 		db:        db,
 		tableName: "users",
+		columns:   []string{"family_name", "name", "middle_name", "phone", "email",
+			"birth_date", "parent_id", "gender_id", "role_id",
+			"created_at", "updated_at"},,
 	}
 }
 
-//!!!
+// Change
 func (r *RepoUser) scanEntityRow(row pgx.Row) (*domain.User, error) {
 	var e domain.User
 
@@ -73,7 +84,6 @@ func (r *RepoUser) scanEntityRow(row pgx.Row) (*domain.User, error) {
 	return &e, nil
 }
 
-//V
 func (r *RepoUser) scanEntityRows(rows pgx.Rows) ([]domain.User, error) {
 	defer rows.Close()
 
@@ -93,7 +103,7 @@ func (r *RepoUser) scanEntityRows(rows pgx.Rows) ([]domain.User, error) {
 	return entities, nil
 }
 
-//!!!
+// Change
 func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) {
 	if entity == nil {
 		return 0, fmt.Errorf("%w: entity is nil", ErrInvalidInput)
@@ -107,7 +117,7 @@ func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) 
 		INSERT INTO %s (
 			family_name, name, middle_name, phone, email,
 			birth_date, parent_id, gender_id, role_id,
-			created_at, updated_at
+			created_at, updated_aсt
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id
 	`, r.tableName)
@@ -136,7 +146,7 @@ func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) 
 	return id, nil
 }
 
-//!!!
+// !!!+решим
 func (r *RepoUser) Get(ctx context.Context, id int64) (*domain.User, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
@@ -172,7 +182,7 @@ func (r *RepoUser) GetBy(ctx context.Context, filterKey, filterValue string) (*d
 	return r.scanEntityRow(row)
 }
 
-//!!!
+// !!!+Решим
 func (r *RepoUser) List(ctx context.Context, offset, limit int64) ([]domain.User, error) {
 	var queryEnd string
 	if offset != 0 || limit != 0 {
@@ -221,7 +231,7 @@ func (r *RepoUser) ListBy(ctx context.Context, filterKey, filterValue string, of
 	return r.scanEntityRows(rows)
 }
 
-//!!!
+// Change
 func (r *RepoUser) Update(ctx context.Context, id int64, entity *domain.User) error {
 	if id <= 0 {
 		return fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
@@ -318,7 +328,7 @@ func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, 
 	return nil
 }
 
-//V
+
 func (r *RepoUser) Delete(ctx context.Context, id int64) error {
 	if id <= 0 {
 		return fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
