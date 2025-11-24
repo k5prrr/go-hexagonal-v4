@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -45,25 +48,26 @@ type IDB interface {
 	QueryRow(ctx context.Context, query string, args ...any) pgx.Row
 	Begin(ctx context.Context) (pgx.Tx, error)
 	Time() string
+	ClearName(text string) string
+	ClearText(text string) string
 	Close()
 }
 
 type ICRUD interface {
-	Add(entity *any) (int64, error)
+	Add(ctx context.Context, entity *any) (int64, error)
 
-	Get(id int64) (*any, error)
-	GetBy(filterKey, filterValue string) (*any, error)
+	Get(ctx context.Context, id int64) (*any, error)
+	GetBy(ctx context.Context, filterKey, filterValue string) (*any, error)
 
-	List() (*[]any, error)
-	ListBy(filterKey, filterValue string) (*[]any, error)
+	List(ctx context.Context, offset, limit int64) (*[]any, error)
+	ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) (*[]any, error)
 
-	Update(id int64, entity *any) error
-	UpdateBy(filterKey, filterValue string, entity *any) error
+	Update(ctx context.Context, id int64, entity *any) error
+	UpdateBy(ctx context.Context, filterKey, filterValue string, entity *any, limit int64) error
 
-	Delete(id int64) error
-	DeleteBy(filterKey, filterValue string) error
+	Delete(ctx context.Context, id int64) error
+	DeleteBy(ctx context.Context, filterKey, filterValue string, limit int64) error
 }
-
 
 type pgxDB struct {
 	pool *pgxpool.Pool
@@ -124,6 +128,37 @@ func (d *pgxDB) Time() string {
 	currentTime := time.Now()
 
 	return currentTime.Format("2006-01-02 15:04:05")
+}
+
+func (d *pgxDB) ClearName(text string) string {
+	text = strings.TrimSpace(text)
+	re := regexp.MustCompile(`[^a-zA-Z0-9_]`)
+	text = re.ReplaceAllString(text, "")
+
+	if utf8.RuneCountInString(text) > 255 {
+		runes := []rune(text)
+		text = string(runes[:255])
+	}
+
+	return text
+}
+
+func ClearText(text string) string {
+	text = strings.TrimSpace(text)
+
+	repl := strings.NewReplacer(
+		"\r", "-",
+		`"`, "-",
+		"'", "-",
+		"`", "-",
+	)
+	text = repl.Replace(text)
+
+	re := regexp.MustCompile(`[\x00\n\r\x1A"'\\]`)
+
+	return re.ReplaceAllStringFunc(text, func(s string) string {
+		return `\` + s
+	})
 }
 
 func (d *pgxDB) Close() {

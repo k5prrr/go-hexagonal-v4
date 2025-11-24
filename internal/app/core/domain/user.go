@@ -11,7 +11,7 @@ type User struct {
 	Name        string
 	MiddleName  string
 
-	Phone       int64
+	Phone       string
 	Email       string
 	BirthDate   *time.Time `json:"birth_date" gorm:"column:birth_date;type:date"` // может быть NULL
 

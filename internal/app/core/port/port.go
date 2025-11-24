@@ -40,17 +40,17 @@ type Itg interface {
 }
 
 type IRepoUser interface {
-	Add(entity *domain.User) (int64, error)
+	Add(ctx context.Context, entity *domain.User) (int64, error)
 
-	Get(id int64) (*domain.User, error)
-	GetBy(filterKey, filterValue string) (*domain.User, error)
+	Get(ctx context.Context, id int64) (*domain.User, error)
+	GetBy(ctx context.Context, filterKey, filterValue string) (*domain.User, error)
 
-	List() (*[]domain.User, error)
-	ListBy(filterKey, filterValue string) (*[]domain.User, error)
+	List(ctx context.Context, offset, limit int64) (*[]domain.User, error)
+	ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) (*[]domain.User, error)
 
-	Update(id int64, entity *domain.User) error
-	UpdateBy(filterKey, filterValue string, entity *domain.User) error
+	Update(ctx context.Context, id int64, entity *domain.User) error
+	UpdateBy(ctx context.Context, filterKey, filterValue string, entity *domain.User, limit int64) error
 
-	Delete(id int64) error
-	DeleteBy(filterKey, filterValue string) error
+	Delete(ctx context.Context, id int64) error
+	DeleteBy(ctx context.Context, filterKey, filterValue string, limit int64) error
 }
