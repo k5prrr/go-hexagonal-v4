@@ -45,6 +45,7 @@ func NewRepoUser(db database.IDB) *RepoUser {
 	}
 }
 
+//!!!
 func (r *RepoUser) scanEntityRow(row pgx.Row) (*domain.User, error) {
 	var e domain.User
 
@@ -72,6 +73,7 @@ func (r *RepoUser) scanEntityRow(row pgx.Row) (*domain.User, error) {
 	return &e, nil
 }
 
+//V
 func (r *RepoUser) scanEntityRows(rows pgx.Rows) ([]domain.User, error) {
 	defer rows.Close()
 
@@ -91,6 +93,7 @@ func (r *RepoUser) scanEntityRows(rows pgx.Rows) ([]domain.User, error) {
 	return entities, nil
 }
 
+//!!!
 func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) {
 	if entity == nil {
 		return 0, fmt.Errorf("%w: entity is nil", ErrInvalidInput)
@@ -133,6 +136,7 @@ func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) 
 	return id, nil
 }
 
+//!!!
 func (r *RepoUser) Get(ctx context.Context, id int64) (*domain.User, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
@@ -150,7 +154,6 @@ func (r *RepoUser) Get(ctx context.Context, id int64) (*domain.User, error) {
 
 	return r.scanEntityRow(row)
 }
-
 func (r *RepoUser) GetBy(ctx context.Context, filterKey, filterValue string) (*domain.User, error) {
 	if err := validateFilterKey(filterKey); err != nil {
 		return nil, err
@@ -169,6 +172,7 @@ func (r *RepoUser) GetBy(ctx context.Context, filterKey, filterValue string) (*d
 	return r.scanEntityRow(row)
 }
 
+//!!!
 func (r *RepoUser) List(ctx context.Context, offset, limit int64) ([]domain.User, error) {
 	var queryEnd string
 	if offset != 0 || limit != 0 {
@@ -190,7 +194,6 @@ func (r *RepoUser) List(ctx context.Context, offset, limit int64) ([]domain.User
 
 	return r.scanEntityRows(rows)
 }
-
 func (r *RepoUser) ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) ([]domain.User, error) {
 	var queryEnd string
 	if offset != 0 || limit != 0 {
@@ -218,6 +221,7 @@ func (r *RepoUser) ListBy(ctx context.Context, filterKey, filterValue string, of
 	return r.scanEntityRows(rows)
 }
 
+//!!!
 func (r *RepoUser) Update(ctx context.Context, id int64, entity *domain.User) error {
 	if id <= 0 {
 		return fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
@@ -263,7 +267,6 @@ func (r *RepoUser) Update(ctx context.Context, id int64, entity *domain.User) er
 
 	return nil
 }
-
 func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, entity *domain.User, limit int64) error {
 	if entity == nil {
 		return fmt.Errorf("%w: entity is nil", ErrInvalidInput)
@@ -315,6 +318,7 @@ func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, 
 	return nil
 }
 
+//V
 func (r *RepoUser) Delete(ctx context.Context, id int64) error {
 	if id <= 0 {
 		return fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
@@ -332,7 +336,6 @@ func (r *RepoUser) Delete(ctx context.Context, id int64) error {
 
 	return nil
 }
-
 func (r *RepoUser) DeleteBy(ctx context.Context, filterKey, filterValue string, limit int64) error {
 	if err := validateFilterKey(filterKey); err != nil {
 		return err
