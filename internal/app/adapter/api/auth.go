@@ -32,8 +32,7 @@ func (r *Router) handleLinkCheckPhone(w http.ResponseWriter, req *http.Request) 
 
 			return
 		}
-*/
-
+	*/
 
 	// Например, вернуть код (в реальности — отправить SMS, а клиенту — UUID или токен)
 	w.Header().Set("Content-Type", "application/json")

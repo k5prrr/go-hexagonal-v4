@@ -52,53 +52,52 @@ func (u *UseCase) AddPhoneByChatId(ctx context.Context, chatId int, phone string
 }
 */
 
-
 /*
-func randStringHex(nBytes int) (string, error) {
-	b := make([]byte, nBytes)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
-}
-
-func (u *UseCase) userAuthByPhone(ctx context.Context, phone int64) (*domain.User, *domain.Auth, error) {
-	user, err := u.repo.UserByPhone(ctx, phone)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get user by phone: %w", err)
+	func randStringHex(nBytes int) (string, error) {
+		b := make([]byte, nBytes)
+		if _, err := rand.Read(b); err != nil {
+			return "", err
+		}
+		return hex.EncodeToString(b), nil
 	}
 
-	auth, err := u.repo.AuthByUserID(ctx, user.ID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get auth by user id: %w", err)
-	}
+	func (u *UseCase) userAuthByPhone(ctx context.Context, phone int64) (*domain.User, *domain.Auth, error) {
+		user, err := u.repo.UserByPhone(ctx, phone)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get user by phone: %w", err)
+		}
 
-	return user, auth, nil
-}
+		auth, err := u.repo.AuthByUserID(ctx, user.ID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get auth by user id: %w", err)
+		}
+
+		return user, auth, nil
+	}
 
 func (u *UseCase) SendAuthCode(ctx context.Context, phone int64) error {
 
-	_, auth, err := u.userAuthByPhone(ctx, phone)
-	if err != nil {
-		return fmt.Errorf("get user auth by phone: %w", err)
+		_, auth, err := u.userAuthByPhone(ctx, phone)
+		if err != nil {
+			return fmt.Errorf("get user auth by phone: %w", err)
+		}
+
+		code := rand.Intn(900000) + 100000
+
+		if err = u.repo.UpdateAuthCode(auth.ID, code); err != nil {
+			return fmt.Errorf("update auth code: %w", err)
+		}
+
+		if _, err = u.tg.SendMessage(
+			auth.TgID,
+			fmt.Sprintf("Код: %d", code),
+			"",
+			); err != nil {
+			return fmt.Errorf("send message: %w", err)
+		}
+
+		return nil
 	}
-
-	code := rand.Intn(900000) + 100000
-
-	if err = u.repo.UpdateAuthCode(auth.ID, code); err != nil {
-		return fmt.Errorf("update auth code: %w", err)
-	}
-
-	if _, err = u.tg.SendMessage(
-		auth.TgID,
-		fmt.Sprintf("Код: %d", code),
-		"",
-		); err != nil {
-		return fmt.Errorf("send message: %w", err)
-	}
-
-	return nil
-}
 */
 func (u *UseCase) CreateUser(ctx context.Context, tgID, phone int64) (int64, error) {
 	return 0, nil
@@ -111,7 +110,7 @@ func (u *UseCase) CreateUser(ctx context.Context, tgID, phone int64) (int64, err
 
 	return id, nil
 
-	 */
+	*/
 }
 
 /*
@@ -119,4 +118,3 @@ func (u *UseCase) LoginCode(ctx context.Context, phone int64, code int64) (int64
 	return 0, "", nil
 }
 */
-

@@ -1,9 +1,12 @@
 package postgres
-/*
-1 Меняем все RepoUser
-2 Меняем все domain.User
-3 Меняем поля в Change
 
+/*
+	1 Заменяем все RepoUser
+	2 Заменяем все domain.User
+	3 Меняем поля в Change (Важно в порядке columns)
+
+	В таблице всегда должны быть
+	id, created_at, updated_at, deleted_at
 */
 import (
 	"app/internal/app/core/domain"
@@ -11,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -22,26 +26,15 @@ var (
 	ErrUnsupported  = errors.New("unsupported filter key")
 )
 
-// Change
-var allowedFilters = map[string]struct{}{
-	"id":          {},
-	"phone":       {},
-	"email":       {},
-	"family_name": {},
-	"name":        {},
-}
-
-func validateFilterKey(key string) error {
-	if _, ok := allowedFilters[key]; !ok {
-		return fmt.Errorf("%w: %q", ErrUnsupported, key)
-	}
-	return nil
-}
-
 type RepoUser struct {
-	db        database.IDB
-	tableName string
-	columns   []string
+	db               database.IDB
+	tableName        string
+	columns          []string
+	columnsStr       string
+	columnsStrUpdate string
+	columnsLen       int
+	allowedFilters   map[string]struct{}
+	softDelete	bool
 }
 
 // Change
@@ -49,18 +42,25 @@ func NewRepoUser(db database.IDB) *RepoUser {
 	return &RepoUser{
 		db:        db,
 		tableName: "users",
-		columns:   []string{"family_name", "name", "middle_name", "phone", "email",
+		columns: []string{"family_name", "name", "middle_name", "phone", "email",
 			"birth_date", "parent_id", "gender_id", "role_id",
-			"created_at", "updated_at"},
+		},
+		allowedFilters: map[string]struct{}{
+			"id":          {},
+			"phone":       {},
+			"email":       {},
+			"family_name": {},
+			"name":        {},
+		},
+		softDelete: true,
 	}
 }
-
-// Change
 func (r *RepoUser) scanEntityRow(row pgx.Row) (*domain.User, error) {
 	var e domain.User
 
 	err := row.Scan(
 		&e.ID,
+
 		&e.FamilyName,
 		&e.Name,
 		&e.MiddleName,
@@ -70,6 +70,7 @@ func (r *RepoUser) scanEntityRow(row pgx.Row) (*domain.User, error) {
 		&e.ParentID,
 		&e.GenderID,
 		&e.RoleID,
+
 		&e.CreatedAt,
 		&e.UpdatedAt,
 	)
@@ -77,32 +78,12 @@ func (r *RepoUser) scanEntityRow(row pgx.Row) (*domain.User, error) {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
+
 		return nil, fmt.Errorf("scan entity row: %w", err)
 	}
 
 	return &e, nil
 }
-
-func (r *RepoUser) scanEntityRows(rows pgx.Rows) ([]domain.User, error) {
-	defer rows.Close()
-
-	var entities []domain.User
-	for rows.Next() {
-		e, err := r.scanEntityRow(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan entity in list: %w", err)
-		}
-		entities = append(entities, *e)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
-	}
-
-	return entities, nil
-}
-
-// Change
 func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) {
 	if entity == nil {
 		return 0, fmt.Errorf("%w: entity is nil", ErrInvalidInput)
@@ -113,16 +94,14 @@ func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) 
 	entity.UpdatedAt = now
 
 	query := fmt.Sprintf(`
-		INSERT INTO %s (
-			family_name, name, middle_name, phone, email,
-			birth_date, parent_id, gender_id, role_id,
-			created_at, updated_aсt
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO %s (%s) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id
-	`, r.tableName)
+	`, r.tableName, r.getColumnsStr())
 
 	var id int64
 	err := r.db.QueryRow(ctx, query,
+
 		entity.FamilyName,
 		entity.Name,
 		entity.MiddleName,
@@ -132,6 +111,7 @@ func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) 
 		entity.ParentID,
 		entity.GenderID,
 		entity.RoleID,
+
 		entity.CreatedAt,
 		entity.UpdatedAt,
 	).Scan(&id)
@@ -144,93 +124,6 @@ func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) 
 
 	return id, nil
 }
-
-// !!!+решим
-func (r *RepoUser) Get(ctx context.Context, id int64) (*domain.User, error) {
-	if id <= 0 {
-		return nil, fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
-	}
-
-	query := fmt.Sprintf(`
-		SELECT id, family_name, name, middle_name, phone,
-		       email, birth_date, parent_id, gender_id, role_id,
-		       created_at, updated_at
-		FROM %s
-		WHERE id = $1 AND deleted_at IS NULL
-	`, r.tableName)
-
-	row := r.db.QueryRow(ctx, query, id)
-
-	return r.scanEntityRow(row)
-}
-func (r *RepoUser) GetBy(ctx context.Context, filterKey, filterValue string) (*domain.User, error) {
-	if err := validateFilterKey(filterKey); err != nil {
-		return nil, err
-	}
-
-	query := fmt.Sprintf(`
-		SELECT id, family_name, name, middle_name, phone,
-		       email, birth_date, parent_id, gender_id, role_id,
-		       created_at, updated_at
-		FROM %s
-		WHERE deleted_at IS NULL AND %s = $1
-	`, r.tableName, filterKey)
-
-	row := r.db.QueryRow(ctx, query, filterValue)
-
-	return r.scanEntityRow(row)
-}
-
-// !!!+Решим
-func (r *RepoUser) List(ctx context.Context, offset, limit int64) ([]domain.User, error) {
-	var queryEnd string
-	if offset != 0 || limit != 0 {
-		queryEnd = fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
-	}
-	query := fmt.Sprintf(`
-		SELECT id, family_name, name, middle_name, phone,
-		       email, birth_date, parent_id, gender_id, role_id,
-		       created_at, updated_at
-		FROM %s
-		WHERE deleted_at IS NULL
-		%s
-	`, r.tableName, queryEnd)
-
-	rows, err := r.db.Query(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("query entities: %w", err)
-	}
-
-	return r.scanEntityRows(rows)
-}
-func (r *RepoUser) ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) ([]domain.User, error) {
-	var queryEnd string
-	if offset != 0 || limit != 0 {
-		queryEnd = fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
-	}
-
-	if err := validateFilterKey(filterKey); err != nil {
-		return nil, err
-	}
-
-	query := fmt.Sprintf(`
-		SELECT id, family_name, name, middle_name, phone,
-		       email, birth_date, parent_id, gender_id, role_id,
-		       created_at, updated_at
-		FROM %s
-		WHERE deleted_at IS NULL AND %s = $1
-		%s
-	`, r.tableName, filterKey, queryEnd)
-
-	rows, err := r.db.Query(ctx, query, filterValue)
-	if err != nil {
-		return nil, fmt.Errorf("query entities by %s: %w", filterKey, err)
-	}
-
-	return r.scanEntityRows(rows)
-}
-
-// Change
 func (r *RepoUser) Update(ctx context.Context, id int64, entity *domain.User) error {
 	if id <= 0 {
 		return fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
@@ -242,21 +135,13 @@ func (r *RepoUser) Update(ctx context.Context, id int64, entity *domain.User) er
 	entity.UpdatedAt = time.Now()
 
 	query := fmt.Sprintf(`
-		UPDATE %s SET
-		    family_name = $1,
-		    name = $2,
-		    middle_name = $3,
-		    phone = $4,
-		    email = $5,
-		    birth_date = $6,
-		    parent_id = $7,
-		    gender_id = $8,
-		    role_id = $9,
-		    updated_at = $10
-		WHERE id = $11 AND deleted_at IS NULL
-	`, r.tableName)
+		UPDATE %s SET %s
+		WHERE id = $%d AND deleted_at IS NULL
+		LIMIT 1
+	`, r.tableName, r.getColumnsStrUpdate(), r.getColumnsLen())
 
 	_, err := r.db.Exec(ctx, query,
+
 		entity.FamilyName,
 		entity.Name,
 		entity.MiddleName,
@@ -266,6 +151,7 @@ func (r *RepoUser) Update(ctx context.Context, id int64, entity *domain.User) er
 		entity.ParentID,
 		entity.GenderID,
 		entity.RoleID,
+
 		entity.UpdatedAt,
 		id,
 	)
@@ -280,7 +166,7 @@ func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, 
 	if entity == nil {
 		return fmt.Errorf("%w: entity is nil", ErrInvalidInput)
 	}
-	if err := validateFilterKey(filterKey); err != nil {
+	if err := r.validateFilterKey(filterKey); err != nil {
 		return err
 	}
 	var queryEnd string
@@ -291,22 +177,13 @@ func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, 
 	entity.UpdatedAt = time.Now()
 
 	query := fmt.Sprintf(`
-		UPDATE %s SET
-		    family_name = $1,
-		    name = $2,
-		    middle_name = $3,
-		    phone = $4,
-		    email = $5,
-		    birth_date = $6,
-		    parent_id = $7,
-		    gender_id = $8,
-		    role_id = $9,
-		    updated_at = $10
-		WHERE deleted_at IS NULL AND %s = $11
+		UPDATE %s SET %s
+		WHERE deleted_at IS NULL AND %s = $%d
 		%s
-	`, r.tableName, filterKey, queryEnd)
+	`, r.tableName, r.getColumnsStrUpdate(), filterKey, r.getColumnsLen(), queryEnd)
 
 	_, err := r.db.Exec(ctx, query,
+
 		entity.FamilyName,
 		entity.Name,
 		entity.MiddleName,
@@ -316,6 +193,7 @@ func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, 
 		entity.ParentID,
 		entity.GenderID,
 		entity.RoleID,
+
 		entity.UpdatedAt,
 		filterValue,
 	)
@@ -327,7 +205,82 @@ func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, 
 	return nil
 }
 
+// Not Change
+func (r *RepoUser) Get(ctx context.Context, id int64) (*domain.User, error) {
+	if id <= 0 {
+		return nil, fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
+	}
 
+	query := fmt.Sprintf(`
+		SELECT id, %s
+		FROM %s
+		WHERE id = $1 AND deleted_at IS NULL
+		LIMIT 1
+	`, r.getColumnsStr(), r.tableName)
+
+	row := r.db.QueryRow(ctx, query, id)
+
+	return r.scanEntityRow(row)
+}
+func (r *RepoUser) GetBy(ctx context.Context, filterKey, filterValue string) (*domain.User, error) {
+	if err := r.validateFilterKey(filterKey); err != nil {
+		return nil, err
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, %s
+		FROM %s
+		WHERE deleted_at IS NULL AND %s = $1
+		LIMIT 1
+	`, r.getColumnsStr(), r.tableName, filterKey)
+
+	row := r.db.QueryRow(ctx, query, filterValue)
+
+	return r.scanEntityRow(row)
+}
+func (r *RepoUser) List(ctx context.Context, offset, limit int64) ([]domain.User, error) {
+	var queryEnd string
+	if offset != 0 || limit != 0 {
+		queryEnd = fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
+	}
+	query := fmt.Sprintf(`
+		SELECT id, %s
+		FROM %s
+		WHERE deleted_at IS NULL
+		%s
+	`, r.getColumnsStr(), r.tableName, queryEnd)
+
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query entities: %w", err)
+	}
+
+	return r.scanEntityRows(rows)
+}
+func (r *RepoUser) ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) ([]domain.User, error) {
+	var queryEnd string
+	if offset != 0 || limit != 0 {
+		queryEnd = fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
+	}
+
+	if err := r.validateFilterKey(filterKey); err != nil {
+		return nil, err
+	}
+
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM %s
+		WHERE deleted_at IS NULL AND %s = $1
+		%s
+	`, r.getColumnsStr(), r.tableName, filterKey, queryEnd)
+
+	rows, err := r.db.Query(ctx, query, filterValue)
+	if err != nil {
+		return nil, fmt.Errorf("query entities by %s: %w", filterKey, err)
+	}
+
+	return r.scanEntityRows(rows)
+}
 func (r *RepoUser) Delete(ctx context.Context, id int64) error {
 	if id <= 0 {
 		return fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
@@ -336,6 +289,7 @@ func (r *RepoUser) Delete(ctx context.Context, id int64) error {
 	query := fmt.Sprintf(`
 		UPDATE %s SET deleted_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
+		LIMIT 1
 	`, r.tableName)
 
 	_, err := r.db.Exec(ctx, query, id)
@@ -346,7 +300,7 @@ func (r *RepoUser) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 func (r *RepoUser) DeleteBy(ctx context.Context, filterKey, filterValue string, limit int64) error {
-	if err := validateFilterKey(filterKey); err != nil {
+	if err := r.validateFilterKey(filterKey); err != nil {
 		return err
 	}
 	var queryEnd string
@@ -366,4 +320,61 @@ func (r *RepoUser) DeleteBy(ctx context.Context, filterKey, filterValue string, 
 	}
 
 	return nil
+}
+
+// Not Change Utils
+func (r *RepoUser) getColumnsStr() string {
+	if r.columnsStr == "" {
+		r.columnsStr = fmt.Sprintf(
+			"%s, created_at, updated_at",
+			strings.Join(r.columns, ", "),
+		)
+	}
+	return r.columnsStr
+}
+func (r *RepoUser) getColumnsStrUpdate() string {
+	if r.columnsStrUpdate == "" {
+		tmpLen := len(r.columns)
+		tmp := make([]string, tmpLen)
+		for i, name := range r.columns {
+			tmp[i] = fmt.Sprintf("%s = $%d", name, i+1)
+		}
+		r.columnsStrUpdate = fmt.Sprintf(
+			"%s, updated_at = $%d",
+			strings.Join(tmp, ", "),
+			tmpLen,
+		)
+	}
+	return r.columnsStrUpdate
+}
+func (r *RepoUser) getColumnsLen() int {
+	if r.columnsLen == 0 {
+		r.columnsLen = len(r.columns) + 1
+	}
+
+	return r.columnsLen
+}
+func (r *RepoUser) validateFilterKey(key string) error {
+	if _, ok := r.allowedFilters[key]; !ok {
+		return fmt.Errorf("%w: %q", ErrUnsupported, key)
+	}
+	return nil
+}
+func (r *RepoUser) scanEntityRows(rows pgx.Rows) ([]domain.User, error) {
+	defer rows.Close()
+
+	var entities []domain.User
+	for rows.Next() {
+		e, err := r.scanEntityRow(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan entity in list: %w", err)
+		}
+		entities = append(entities, *e)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return entities, nil
 }

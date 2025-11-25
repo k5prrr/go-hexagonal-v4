@@ -19,9 +19,9 @@ type TelegramWorker struct {
 	cancel  context.CancelFunc
 }
 
-func New(tg      *telegram.Telegram, useCase port.IUseCase) *TelegramWorker {
+func New(tg *telegram.Telegram, useCase port.IUseCase) *TelegramWorker {
 	return &TelegramWorker{
-		tg: tg,
+		tg:      tg,
 		useCase: useCase,
 	}
 }

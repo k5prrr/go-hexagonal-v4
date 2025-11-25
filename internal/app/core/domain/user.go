@@ -6,21 +6,21 @@ import (
 )
 
 type User struct {
-	ID          int64
-	FamilyName  string
-	Name        string
-	MiddleName  string
+	ID         int64
+	FamilyName string
+	Name       string
+	MiddleName string
 
-	Phone       string
-	Email       string
-	BirthDate   *time.Time `json:"birth_date" gorm:"column:birth_date;type:date"` // может быть NULL
+	Phone     string
+	Email     string
+	BirthDate *time.Time `json:"birth_date" gorm:"column:birth_date;type:date"` // может быть NULL
 
-	ParentID    *int64     `json:"parent_id" gorm:"column:parent_id"`             // может быть NULL
-	GenderID    *int       `json:"gender_id" gorm:"column:gender_id"`             // может быть NULL
-	RoleID     *int64     `json:"role_id" gorm:"column:role_id"`               // может быть NULL
+	ParentID *int64 `json:"parent_id" gorm:"column:parent_id"` // может быть NULL
+	GenderID *int   `json:"gender_id" gorm:"column:gender_id"` // может быть NULL
+	RoleID   *int64 `json:"role_id" gorm:"column:role_id"`     // может быть NULL
 
-	CreatedAt time.Time  `json:"created_at" gorm:"column:created_at;not null;autoCreateTime"`
-	UpdatedAt time.Time  `json:"updated_at" gorm:"column:updated_at;not null;autoUpdateTime"`
+	CreatedAt time.Time `json:"created_at" gorm:"column:created_at;not null;autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"column:updated_at;not null;autoUpdateTime"`
 }
 
 func NewUser() *User {

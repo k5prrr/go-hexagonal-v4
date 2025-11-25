@@ -10,7 +10,7 @@ type Router struct {
 	mux     *http.ServeMux
 	useCase port.IUseCase
 	path    string
-	bot string
+	bot     string
 }
 
 func New(useCase port.IUseCase, path string, bot string) *Router {
@@ -30,7 +30,6 @@ func (r *Router) init() {
 	r.authRouter()
 	r.telegramRouter()
 
-	
 }
 
 // Для быстрого добавления по нужному пути
