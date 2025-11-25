@@ -59,14 +59,14 @@ type ICRUD interface {
 	Get(ctx context.Context, id int64) (*any, error)
 	GetBy(ctx context.Context, filterKey, filterValue string) (*any, error)
 
-	List(ctx context.Context, offset, limit int64) (*[]any, error)
-	ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) (*[]any, error)
+	List(ctx context.Context, offset, limit int64) ([]any, error)
+	ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) ([]any, error)
 
 	Update(ctx context.Context, id int64, entity *any) error
-	UpdateBy(ctx context.Context, filterKey, filterValue string, entity *any, limit int64) error
+	UpdateBy(ctx context.Context, filterKey, filterValue string, entity *any) error
 
 	Delete(ctx context.Context, id int64) error
-	DeleteBy(ctx context.Context, filterKey, filterValue string, limit int64) error
+	DeleteBy(ctx context.Context, filterKey, filterValue string) error
 }
 
 type pgxDB struct {
@@ -143,7 +143,7 @@ func (d *pgxDB) ClearName(text string) string {
 	return text
 }
 
-func ClearText(text string) string {
+func (d *pgxDB) ClearText(text string) string {
 	text = strings.TrimSpace(text)
 
 	repl := strings.NewReplacer(

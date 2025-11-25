@@ -5,9 +5,16 @@ import (
 )
 
 type Service struct {
-	repo port.IRepo
+	Repo     port.IRepo
+	RepoUser port.IRepoUser
 }
 
-func New(repo port.IRepo) *Service {
-	return &Service{repo: repo}
+func New(
+	repo port.IRepo,
+	repoUser port.IRepoUser,
+	) *Service {
+	return &Service{
+		Repo: repo,
+		RepoUser: repoUser,
+	}
 }

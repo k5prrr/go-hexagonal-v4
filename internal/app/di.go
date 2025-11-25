@@ -75,6 +75,7 @@ func (d *dependencyInjection) RepoUser() port.IRepoUser {
 	if d.repoUser == nil {
 		d.repoUser = postgres.NewRepoUser(d.DB())
 	}
+
 	return d.repoUser
 }
 func (d *dependencyInjection) Tg() *telegram.Telegram {
@@ -89,7 +90,7 @@ func (d *dependencyInjection) Tg() *telegram.Telegram {
 }
 func (d *dependencyInjection) Services() *service.Service {
 	if d.service == nil {
-		d.service = service.New(d.Repo())
+		d.service = service.New(d.Repo(), d.RepoUser())
 	}
 	return d.service
 }
@@ -104,7 +105,6 @@ func (d *dependencyInjection) Router() *api.Router {
 		conf := d.Conf()
 		d.router = api.New(
 			d.UseCase(),
-			conf.Get("APP_API_PATH", "/"),
 			conf.Get("TELEGRAM_BOT", "https://t.me/a"),
 		)
 	}

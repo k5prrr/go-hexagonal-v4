@@ -137,8 +137,7 @@ func (r *RepoUser) Update(ctx context.Context, id int64, entity *domain.User) er
 	query := fmt.Sprintf(`
 		UPDATE %s SET %s
 		WHERE id = $%d AND deleted_at IS NULL
-		LIMIT 1
-	`, r.tableName, r.getColumnsStrUpdate(), r.getColumnsLen())
+	`, r.tableName, r.getColumnsStrUpdate(), r.getColumnsUpdateI())
 
 	_, err := r.db.Exec(ctx, query,
 
@@ -162,16 +161,12 @@ func (r *RepoUser) Update(ctx context.Context, id int64, entity *domain.User) er
 
 	return nil
 }
-func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, entity *domain.User, limit int64) error {
+func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, entity *domain.User) error {
 	if entity == nil {
 		return fmt.Errorf("%w: entity is nil", ErrInvalidInput)
 	}
 	if err := r.validateFilterKey(filterKey); err != nil {
 		return err
-	}
-	var queryEnd string
-	if limit != 0 {
-		queryEnd = fmt.Sprintf("LIMIT %d", limit)
 	}
 
 	entity.UpdatedAt = time.Now()
@@ -179,8 +174,7 @@ func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, 
 	query := fmt.Sprintf(`
 		UPDATE %s SET %s
 		WHERE deleted_at IS NULL AND %s = $%d
-		%s
-	`, r.tableName, r.getColumnsStrUpdate(), filterKey, r.getColumnsLen(), queryEnd)
+	`, r.tableName, r.getColumnsStrUpdate(), filterKey, r.getColumnsUpdateI())
 
 	_, err := r.db.Exec(ctx, query,
 
@@ -289,7 +283,6 @@ func (r *RepoUser) Delete(ctx context.Context, id int64) error {
 	query := fmt.Sprintf(`
 		UPDATE %s SET deleted_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
-		LIMIT 1
 	`, r.tableName)
 
 	_, err := r.db.Exec(ctx, query, id)
@@ -299,20 +292,15 @@ func (r *RepoUser) Delete(ctx context.Context, id int64) error {
 
 	return nil
 }
-func (r *RepoUser) DeleteBy(ctx context.Context, filterKey, filterValue string, limit int64) error {
+func (r *RepoUser) DeleteBy(ctx context.Context, filterKey, filterValue string) error {
 	if err := r.validateFilterKey(filterKey); err != nil {
 		return err
-	}
-	var queryEnd string
-	if limit != 0 {
-		queryEnd = fmt.Sprintf("LIMIT %d", limit)
 	}
 
 	query := fmt.Sprintf(`
 		UPDATE %s SET deleted_at = NOW()
 		WHERE deleted_at IS NULL AND %s = $1
-		%s
-	`, r.tableName, filterKey, queryEnd)
+	`, r.tableName, filterKey)
 
 	_, err := r.db.Exec(ctx, query, filterValue)
 	if err != nil {
@@ -334,22 +322,22 @@ func (r *RepoUser) getColumnsStr() string {
 }
 func (r *RepoUser) getColumnsStrUpdate() string {
 	if r.columnsStrUpdate == "" {
-		tmpLen := len(r.columns)
-		tmp := make([]string, tmpLen)
+		tmpI := len(r.columns)
+		tmp := make([]string, tmpI)
 		for i, name := range r.columns {
 			tmp[i] = fmt.Sprintf("%s = $%d", name, i+1)
 		}
 		r.columnsStrUpdate = fmt.Sprintf(
 			"%s, updated_at = $%d",
 			strings.Join(tmp, ", "),
-			tmpLen,
+			tmpI+1,
 		)
 	}
 	return r.columnsStrUpdate
 }
-func (r *RepoUser) getColumnsLen() int {
+func (r *RepoUser) getColumnsUpdateI() int {
 	if r.columnsLen == 0 {
-		r.columnsLen = len(r.columns) + 1
+		r.columnsLen = len(r.columns) + 2
 	}
 
 	return r.columnsLen
