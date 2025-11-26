@@ -1,8 +1,8 @@
 package postgres
 
 /*
-	1 Заменяем все RepoUser
-	2 Заменяем все domain.User
+	1 Заменяем все RepoAuth
+	2 Заменяем все domain.Auth
 	3 Меняем поля в Change (Важно в порядке columns)
 
 	В таблице всегда должны быть
@@ -10,19 +10,20 @@ package postgres
 	но в columns их НЕ указываем
 */
 import (
-	"app/internal/app/core/domain"
-	"app/pkg/database"
-	"context"
-	"errors"
-	"fmt"
-	"strings"
-	"time"
+"app/internal/app/core/domain"
+"app/pkg/database"
+"context"
+"errors"
+"fmt"
+"strings"
+"time"
 
-	"github.com/jackc/pgx/v5"
+"github.com/jackc/pgx/v5"
 )
 
 
-type RepoUser struct {
+
+type RepoAuth struct {
 	db               database.IDB
 	tableName        string
 	columns          []string
@@ -34,31 +35,28 @@ type RepoUser struct {
 }
 
 // Change
-func NewRepoUser(db database.IDB) *RepoUser {
-	return &RepoUser{
+func NewRepoAuth(db database.IDB) *RepoAuth {
+	return &RepoAuth{
 		db:        db,
 		tableName: "users",
 		columns: []string{
-			"family_name", "name", "middle_name", "phone", "email",
-			"birth_date", "parent_id", "gender_id", "role_id",
+			"user_id", "tg_id",
+			"code", "token", "last_login_at",
 		},
 	}
 }
-func (r *RepoUser) scanEntityRow(row pgx.Row) (*domain.User, error) {
-	var entity domain.User
+
+func (r *RepoAuth) scanEntityRow(row pgx.Row) (*domain.Auth, error) {
+	var entity domain.Auth
 
 	err := row.Scan(
 		&entity.ID,
 
-		&entity.FamilyName,
-		&entity.Name,
-		&entity.MiddleName,
-		&entity.Phone,
-		&entity.Email,
-		&entity.BirthDate,
-		&entity.ParentID,
-		&entity.GenderID,
-		&entity.RoleID,
+		&entity.UserID,
+		&entity.TgID,
+		&entity.Code,
+		&entity.Token,
+		&entity.LastLoginAt,
 
 		&entity.CreatedAt,
 		&entity.UpdatedAt,
@@ -73,7 +71,7 @@ func (r *RepoUser) scanEntityRow(row pgx.Row) (*domain.User, error) {
 
 	return &entity, nil
 }
-func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) {
+func (r *RepoAuth) Add(ctx context.Context, entity *domain.Auth) (int64, error) {
 	if entity == nil {
 		return 0, fmt.Errorf("%w: entity is nil", ErrInvalidInput)
 	}
@@ -91,15 +89,11 @@ func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) 
 	var id int64
 	err := r.db.QueryRow(ctx, query,
 
-		entity.FamilyName,
-		entity.Name,
-		entity.MiddleName,
-		entity.Phone,
-		entity.Email,
-		entity.BirthDate,
-		entity.ParentID,
-		entity.GenderID,
-		entity.RoleID,
+		entity.UserID,
+		entity.TgID,
+		entity.Code,
+		entity.Token,
+		entity.LastLoginAt,
 
 		entity.CreatedAt,
 		entity.UpdatedAt,
@@ -113,7 +107,7 @@ func (r *RepoUser) Add(ctx context.Context, entity *domain.User) (int64, error) 
 
 	return id, nil
 }
-func (r *RepoUser) Update(ctx context.Context, id int64, entity *domain.User) error {
+func (r *RepoAuth) Update(ctx context.Context, id int64, entity *domain.Auth) error {
 	if id <= 0 {
 		return fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
 	}
@@ -130,15 +124,11 @@ func (r *RepoUser) Update(ctx context.Context, id int64, entity *domain.User) er
 
 	_, err := r.db.Exec(ctx, query,
 
-		entity.FamilyName,
-		entity.Name,
-		entity.MiddleName,
-		entity.Phone,
-		entity.Email,
-		entity.BirthDate,
-		entity.ParentID,
-		entity.GenderID,
-		entity.RoleID,
+		entity.UserID,
+		entity.TgID,
+		entity.Code,
+		entity.Token,
+		entity.LastLoginAt,
 
 		entity.UpdatedAt,
 		id,
@@ -150,7 +140,7 @@ func (r *RepoUser) Update(ctx context.Context, id int64, entity *domain.User) er
 
 	return nil
 }
-func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, entity *domain.User) error {
+func (r *RepoAuth) UpdateBy(ctx context.Context, filterKey, filterValue string, entity *domain.Auth) error {
 	if entity == nil {
 		return fmt.Errorf("%w: entity is nil", ErrInvalidInput)
 	}
@@ -167,15 +157,11 @@ func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, 
 
 	_, err := r.db.Exec(ctx, query,
 
-		entity.FamilyName,
-		entity.Name,
-		entity.MiddleName,
-		entity.Phone,
-		entity.Email,
-		entity.BirthDate,
-		entity.ParentID,
-		entity.GenderID,
-		entity.RoleID,
+		entity.UserID,
+		entity.TgID,
+		entity.Code,
+		entity.Token,
+		entity.LastLoginAt,
 
 		entity.UpdatedAt,
 		filterValue,
@@ -189,7 +175,7 @@ func (r *RepoUser) UpdateBy(ctx context.Context, filterKey, filterValue string, 
 }
 
 // Not Change
-func (r *RepoUser) Get(ctx context.Context, id int64) (*domain.User, error) {
+func (r *RepoAuth) Get(ctx context.Context, id int64) (*domain.Auth, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
 	}
@@ -205,7 +191,7 @@ func (r *RepoUser) Get(ctx context.Context, id int64) (*domain.User, error) {
 
 	return r.scanEntityRow(row)
 }
-func (r *RepoUser) GetBy(ctx context.Context, filterKey, filterValue string) (*domain.User, error) {
+func (r *RepoAuth) GetBy(ctx context.Context, filterKey, filterValue string) (*domain.Auth, error) {
 	if err := r.validateColumn(filterKey); err != nil {
 		return nil, err
 	}
@@ -221,7 +207,7 @@ func (r *RepoUser) GetBy(ctx context.Context, filterKey, filterValue string) (*d
 
 	return r.scanEntityRow(row)
 }
-func (r *RepoUser) GetByInt(ctx context.Context, filterKey string, filterValue int64) (*domain.User, error) {
+func (r *RepoAuth) GetByInt(ctx context.Context, filterKey string, filterValue int64) (*domain.Auth, error) {
 	if err := r.validateColumn(filterKey); err != nil {
 		return nil, err
 	}
@@ -237,7 +223,7 @@ func (r *RepoUser) GetByInt(ctx context.Context, filterKey string, filterValue i
 
 	return r.scanEntityRow(row)
 }
-func (r *RepoUser) List(ctx context.Context, offset, limit int64) ([]domain.User, error) {
+func (r *RepoAuth) List(ctx context.Context, offset, limit int64) ([]domain.Auth, error) {
 	var queryEnd string
 	if offset != 0 || limit != 0 {
 		queryEnd = fmt.Sprintf("ORDER BY id LIMIT %d OFFSET %d", limit, offset)
@@ -256,7 +242,7 @@ func (r *RepoUser) List(ctx context.Context, offset, limit int64) ([]domain.User
 
 	return r.scanEntityRows(rows)
 }
-func (r *RepoUser) ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) ([]domain.User, error) {
+func (r *RepoAuth) ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) ([]domain.Auth, error) {
 	var queryEnd string
 	if offset != 0 || limit != 0 {
 		queryEnd = fmt.Sprintf("ORDER BY id LIMIT %d OFFSET %d", limit, offset)
@@ -280,7 +266,7 @@ func (r *RepoUser) ListBy(ctx context.Context, filterKey, filterValue string, of
 
 	return r.scanEntityRows(rows)
 }
-func (r *RepoUser) UpdateColumn(ctx context.Context, id int64, key, value string) error {
+func (r *RepoAuth) UpdateColumn(ctx context.Context, id int64, key, value string) error {
 	if err := r.validateColumn(key); err != nil {
 		return err
 	}
@@ -302,7 +288,7 @@ func (r *RepoUser) UpdateColumn(ctx context.Context, id int64, key, value string
 
 	return nil
 }
-func (r *RepoUser) Delete(ctx context.Context, id int64, soft bool) error {
+func (r *RepoAuth) Delete(ctx context.Context, id int64, soft bool) error {
 	if id <= 0 {
 		return fmt.Errorf("%w: invalid id %d", ErrInvalidInput, id)
 	}
@@ -326,7 +312,7 @@ func (r *RepoUser) Delete(ctx context.Context, id int64, soft bool) error {
 
 	return nil
 }
-func (r *RepoUser) DeleteBy(ctx context.Context, filterKey, filterValue string, soft bool) error {
+func (r *RepoAuth) DeleteBy(ctx context.Context, filterKey, filterValue string, soft bool) error {
 	if err := r.validateColumn(filterKey); err != nil {
 		return err
 	}
@@ -352,7 +338,7 @@ func (r *RepoUser) DeleteBy(ctx context.Context, filterKey, filterValue string, 
 }
 
 // Not Change Utils
-func (r *RepoUser) getColumnsStr() string {
+func (r *RepoAuth) getColumnsStr() string {
 	if r.columnsStr == "" {
 		r.columnsStr = fmt.Sprintf(
 			"%s, created_at, updated_at",
@@ -361,7 +347,7 @@ func (r *RepoUser) getColumnsStr() string {
 	}
 	return r.columnsStr
 }
-func (r *RepoUser) getColumnsStrUpdate() string {
+func (r *RepoAuth) getColumnsStrUpdate() string {
 	if r.columnsStrUpdate == "" {
 		tmpI := len(r.columns)
 		tmp := make([]string, tmpI)
@@ -376,14 +362,14 @@ func (r *RepoUser) getColumnsStrUpdate() string {
 	}
 	return r.columnsStrUpdate
 }
-func (r *RepoUser) getColumnsUpdateI() int {
+func (r *RepoAuth) getColumnsUpdateI() int {
 	if r.columnsUpdateI == 0 {
 		r.columnsUpdateI = len(r.columns) + 2
 	}
 
 	return r.columnsUpdateI
 }
-func (r *RepoUser) getColumnsInput() string {
+func (r *RepoAuth) getColumnsInput() string {
 	if r.columnsInput == "" {
 		var result []string
 		kol := r.getColumnsUpdateI()
@@ -395,7 +381,7 @@ func (r *RepoUser) getColumnsInput() string {
 
 	return r.columnsInput
 }
-func (r *RepoUser) getColumnsMap() map[string]struct{} {
+func (r *RepoAuth) getColumnsMap() map[string]struct{} {
 	if r.columnsMap == nil {
 		r.columnsMap = make(map[string]struct{})
 		for _, name := range r.columns {
@@ -405,7 +391,7 @@ func (r *RepoUser) getColumnsMap() map[string]struct{} {
 
 	return r.columnsMap
 }
-func (r *RepoUser) validateColumn(key string) error {
+func (r *RepoAuth) validateColumn(key string) error {
 	columnsMap := r.getColumnsMap()
 	if _, ok := columnsMap[key]; !ok {
 		return fmt.Errorf("%w: %q", ErrUnsupported, key)
@@ -413,10 +399,10 @@ func (r *RepoUser) validateColumn(key string) error {
 
 	return nil
 }
-func (r *RepoUser) scanEntityRows(rows pgx.Rows) ([]domain.User, error) {
+func (r *RepoAuth) scanEntityRows(rows pgx.Rows) ([]domain.Auth, error) {
 	defer rows.Close()
 
-	var entities []domain.User
+	var entities []domain.Auth
 	for rows.Next() {
 		e, err := r.scanEntityRow(rows)
 		if err != nil {

@@ -22,6 +22,7 @@ type dependencyInjection struct {
 	migration      *migration.Migration
 	repo           port.IRepo
 	repoUser       port.IRepoUser
+	repoAuth       port.IRepoAuth
 	tg             *telegram.Telegram //port.Itg
 	service        *service.Service
 	useCase        port.IUseCase
@@ -57,7 +58,6 @@ func (d *dependencyInjection) DB() database.IDB {
 	}
 	return d.db
 }
-
 func (d *dependencyInjection) Migration() *migration.Migration {
 	if d.migration == nil {
 		db := d.DB()
@@ -65,6 +65,7 @@ func (d *dependencyInjection) Migration() *migration.Migration {
 	}
 	return d.migration
 }
+
 func (d *dependencyInjection) Repo() port.IRepo {
 	if d.repo == nil {
 		d.repo = postgres.New(d.DB())
@@ -78,6 +79,14 @@ func (d *dependencyInjection) RepoUser() port.IRepoUser {
 
 	return d.repoUser
 }
+func (d *dependencyInjection) RepoAuth() port.IRepoAuth {
+	if d.repoAuth == nil {
+		d.repoAuth = postgres.NewRepoAuth(d.DB())
+	}
+
+	return d.repoAuth
+}
+
 func (d *dependencyInjection) Tg() *telegram.Telegram {
 	if d.tg == nil {
 		conf := d.Conf()
@@ -90,7 +99,7 @@ func (d *dependencyInjection) Tg() *telegram.Telegram {
 }
 func (d *dependencyInjection) Services() *service.Service {
 	if d.service == nil {
-		d.service = service.New(d.Repo(), d.RepoUser())
+		d.service = service.New(d.Repo(), d.RepoUser(), d.RepoAuth())
 	}
 	return d.service
 }
