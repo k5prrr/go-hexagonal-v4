@@ -58,15 +58,17 @@ type ICRUD interface {
 
 	Get(ctx context.Context, id int64) (*any, error)
 	GetBy(ctx context.Context, filterKey, filterValue string) (*any, error)
+	GetByInt(ctx context.Context, filterKey string, filterValue int64) (*any, error)
 
 	List(ctx context.Context, offset, limit int64) ([]any, error)
 	ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) ([]any, error)
 
 	Update(ctx context.Context, id int64, entity *any) error
 	UpdateBy(ctx context.Context, filterKey, filterValue string, entity *any) error
+	UpdateColumn(ctx context.Context, id int64, key, value string) error
 
-	Delete(ctx context.Context, id int64) error
-	DeleteBy(ctx context.Context, filterKey, filterValue string) error
+	Delete(ctx context.Context, id int64, soft bool) error
+	DeleteBy(ctx context.Context, filterKey, filterValue string, soft bool) error
 }
 
 type pgxDB struct {
