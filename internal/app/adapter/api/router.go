@@ -25,6 +25,18 @@ func (r *Router) init() {
 	r.HandleFunc("/api/bot", r.showBot)
 	r.HandleFunc("/api/test1", r.test1)
 
+
+	r.mux.Handle("/",
+		http.StripPrefix("/",
+			http.FileServer(http.Dir("./static/")),
+		),
+	)
+	r.mux.Handle("/api/doc/",
+		http.StripPrefix("/api/doc/",
+			http.FileServer(http.Dir("./docs/static/")),
+		),
+	)
+
 	/*r.static()
 	r.testRouter()
 	r.authRouter()
@@ -52,20 +64,6 @@ func (r *Router) test1(w http.ResponseWriter, req *http.Request) {
 
 // ---
 
-func (r *Router) static() {
-	mainPath := "/"
-	r.mux.Handle(mainPath,
-		http.StripPrefix(mainPath,
-			http.FileServer(http.Dir("./static/")),
-		),
-	)
-
-	r.mux.Handle("api/doc/",
-		http.StripPrefix("api/doc/",
-			http.FileServer(http.Dir("./docs/static/")),
-		),
-	)
-}
 
 // Прокидываем для удобства
 func (r *Router) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) {

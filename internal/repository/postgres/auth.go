@@ -10,18 +10,16 @@ package postgres
 	но в columns их НЕ указываем
 */
 import (
-"app/internal/app/core/domain"
-"app/pkg/database"
-"context"
-"errors"
-"fmt"
-"strings"
-"time"
+	"app/internal/app/core/domain"
+	"app/pkg/database"
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
 
-"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5"
 )
-
-
 
 type RepoAuth struct {
 	db               database.IDB
@@ -29,7 +27,7 @@ type RepoAuth struct {
 	columns          []string
 	columnsStr       string
 	columnsStrUpdate string
-	columnsInput string
+	columnsInput     string
 	columnsUpdateI   int
 	columnsMap       map[string]struct{}
 }
@@ -38,7 +36,7 @@ type RepoAuth struct {
 func NewRepoAuth(db database.IDB) *RepoAuth {
 	return &RepoAuth{
 		db:        db,
-		tableName: "users",
+		tableName: "auth",
 		columns: []string{
 			"user_id", "tg_id",
 			"code", "token", "last_login_at",

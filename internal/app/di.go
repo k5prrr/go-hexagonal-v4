@@ -99,14 +99,22 @@ func (d *dependencyInjection) Tg() *telegram.Telegram {
 }
 func (d *dependencyInjection) Services() *service.Service {
 	if d.service == nil {
-		d.service = service.New(d.Repo(), d.RepoUser(), d.RepoAuth())
+		d.service = service.New(
+			d.Tg(),
+
+			d.Repo(),
+			d.RepoUser(),
+			d.RepoAuth(),
+		)
 	}
+
 	return d.service
 }
 func (d *dependencyInjection) UseCase() port.IUseCase {
 	if d.useCase == nil {
-		d.useCase = usecase.New(d.Services(), d.Repo(), d.Tg())
+		d.useCase = usecase.New(d.Services())
 	}
+
 	return d.useCase
 }
 func (d *dependencyInjection) Router() *api.Router {

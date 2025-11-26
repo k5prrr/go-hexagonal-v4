@@ -5,7 +5,7 @@
 */
 const options = {
     version: '9 2025-09-04',
-    apiUrl: '/api/v2/',
+    apiUrl: '/api/',
 }
 var storage = {
     idb: null,

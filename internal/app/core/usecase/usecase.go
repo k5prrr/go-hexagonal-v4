@@ -10,16 +10,11 @@ import (
 // Тут он как основной, тут только создания
 type UseCase struct {
 	service *service.Service
-	repo    port.IRepo
-	tg      port.Itg
 }
 
-func New(service *service.Service, repo port.IRepo, tg port.Itg) port.IUseCase {
-
+func New(service *service.Service) port.IUseCase {
 	return &UseCase{
 		service: service,
-		repo:    repo,
-		tg:      tg,
 	}
 }
 

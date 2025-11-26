@@ -53,6 +53,7 @@ func (t *TelegramWorker) Step() {
 	messages, err := t.tg.GetSimpleUpdates()
 	if err != nil {
 		log.Printf("failed to get updates: %v", err)
+
 		return
 	}
 
@@ -71,6 +72,7 @@ func (t *TelegramWorker) Step() {
 				if err != nil {
 					log.Printf("failed to send message: %v", err)
 				}
+
 				continue
 			}
 		}
@@ -80,11 +82,11 @@ func (t *TelegramWorker) Step() {
 			strconv.FormatInt(message.ChatID, 10) == message.Params[0] {
 			// Получаем ответ его контакт
 
-			log.Printf("Received contact from chatID=%d: UserID=%s, Phone=%s",
+			/*log.Printf("Received contact from chatID=%d: UserID=%s, Phone=%s",
 				message.ChatID,
 				message.Params[0],
 				message.Params[1],
-			)
+			)*/
 
 			_, err = t.tg.SendMessage(
 				message.ChatID,

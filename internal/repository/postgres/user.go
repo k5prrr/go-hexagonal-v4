@@ -21,14 +21,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-
 type RepoUser struct {
 	db               database.IDB
 	tableName        string
 	columns          []string
 	columnsStr       string
 	columnsStrUpdate string
-	columnsInput string
+	columnsInput     string
 	columnsUpdateI   int
 	columnsMap       map[string]struct{}
 }

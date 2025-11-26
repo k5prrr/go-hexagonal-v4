@@ -15,6 +15,7 @@ import (
 type Repo struct {
 	db database.IDB
 }
+
 func New(db database.IDB) *Repo {
 	return &Repo{db: db}
 }

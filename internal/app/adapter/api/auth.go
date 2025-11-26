@@ -14,7 +14,6 @@ func (r *Router) authRouter() {
 	r.HandleFunc("bot", r.showBot)
 }
 
-
 func (r *Router) handleLinkCheckPhone(w http.ResponseWriter, req *http.Request) {
 	// Тут проверка полей и отправка в чистые useCase
 	//w.WriteHeader(http.StatusOK)

@@ -17,22 +17,6 @@ type IUseCase interface {
 
 	 */
 	Test1() (*domain.User, error)
-
-}
-type IRepo interface {
-	/*AddCodeCheckPhone(ctx context.Context, code, codeType string) error
-	GetCodeByCode(ctx context.Context, code string) (*domain.AuthCode, error)
-	UpdateChatIDByCode(ctx context.Context, code string, chatID int) error
-	UpdatePhoneByChatID(ctx context.Context, chatID int, phone string) error
-	*/
-
-	/*
-		CreateUser(ctx context.Context, tgID int64, phone int64) (int64, error)
-		UserByPhone(ctx context.Context, phone int64) (*domain.User, error)
-		AuthByUserID(ctx context.Context, userID int64) (*domain.Auth, error)
-		UpdateAuthCode(id int64, code int) error
-	*/
-
 }
 
 type Itg interface {
@@ -40,6 +24,7 @@ type Itg interface {
 	SendMessage(chatID int64, message string, replyMarkup string) (string, error)
 }
 
+type IRepo interface{}
 type IRepoUser interface {
 	Add(ctx context.Context, entity *domain.User) (int64, error)
 

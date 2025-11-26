@@ -1,7 +1,11 @@
 package usecase
 
 import (
+	"app/internal/app/core/domain"
 	"context"
+	"errors"
+	"fmt"
+	"strconv"
 )
 
 /*
@@ -100,20 +104,47 @@ func (u *UseCase) SendAuthCode(ctx context.Context, phone int64) error {
 	}
 */
 func (u *UseCase) CreateUser(ctx context.Context, tgID, phone int64) (int64, error) {
-	return 0, nil
-	/*_, _, _ = ctx, tgID, phone
-	id, err := u.repo.CreateUser(ctx, tgID, phone)
-	if err != nil {
+	var err error
 
-		return 0, fmt.Errorf("failed repo CreateUser: %w", err)
+	// Есть ли телефон, то вылет
+	phoneStr := strconv.FormatInt(phone, 10)
+	user, _ := u.service.RepoUser.GetBy(ctx, "phone", phoneStr)
+	if user != nil {
+		return 0, errors.New("user have by phone")
 	}
 
-	return id, nil
+	// Есть ли тг, то обновим телефон
+	auth, _ := u.service.RepoAuth.GetByInt(ctx, "tg_id", tgID)
+	if auth != nil {
+		err = u.service.RepoUser.UpdateColumn(ctx, auth.UserID, "phone", phoneStr)
+		if err != nil {
+			return 0, errors.New("user not update phone")
+		}
 
-	*/
+		return auth.UserID, nil
+	}
+
+	token, err := u.service.Token(32) // 32 to 64 chars
+	if err != nil {
+		return 0, err
+	}
+
+	userID, err := u.service.RepoUser.Add(ctx, &domain.User{Phone: phoneStr})
+	if err != nil {
+		return 0, errors.New("user not add phone")
+	}
+
+	_, err = u.service.RepoAuth.Add(ctx, &domain.Auth{
+		UserID: userID,
+		TgID:   tgID,
+		Token:  token,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to add auth for tg: %w", err)
+	}
+
+	return userID, nil
 }
-
-
 
 /*
 func (u *UseCase) LoginCode(ctx context.Context, phone int64, code int64) (int64, string, error) {

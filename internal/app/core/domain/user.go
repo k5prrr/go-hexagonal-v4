@@ -7,12 +7,12 @@ import (
 
 type User struct {
 	ID         int64
-	FamilyName string
-	Name       string
-	MiddleName string
+	FamilyName *string
+	Name       *string
+	MiddleName *string
 
 	Phone     string
-	Email     string
+	Email     *string
 	BirthDate *time.Time `json:"birth_date" gorm:"column:birth_date;type:date"` // может быть NULL
 
 	ParentID *int64 `json:"parent_id" gorm:"column:parent_id"` // может быть NULL
@@ -23,9 +23,6 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"column:updated_at;not null;autoUpdateTime"`
 }
 
-func NewUser() *User {
-	return &User{}
-}
 func (u *User) FullName() string {
 	return fmt.Sprintf(
 		"%s %s %s",
