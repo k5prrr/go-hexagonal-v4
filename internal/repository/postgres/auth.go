@@ -265,20 +265,32 @@ func (r *RepoAuth) ListBy(ctx context.Context, filterKey, filterValue string, of
 	return r.scanEntityRows(rows)
 }
 func (r *RepoAuth) UpdateColumn(ctx context.Context, id int64, key, value string) error {
-	if err := r.validateColumn(key); err != nil {
+	var err error
+	if err = r.validateColumn(key); err != nil {
 		return err
 	}
 
-	query := fmt.Sprintf(`
-		UPDATE %s SET %s = $1, updated_at = $2
-		WHERE id = $3 AND deleted_at IS NULL
-	`, r.tableName, key)
-
-	_, err := r.db.Exec(ctx, query,
-		value,
-		time.Now(),
-		id,
-	)
+	var query string
+	if value == "NULL" {
+		query = fmt.Sprintf(`
+			UPDATE %s SET %s = NULL, updated_at = $1
+			WHERE id = $2 AND deleted_at IS NULL
+		`, r.tableName, key)
+		_, err = r.db.Exec(ctx, query,
+			time.Now(),
+			id,
+		)
+	} else {
+		query = fmt.Sprintf(`
+			UPDATE %s SET %s = $1, updated_at = $2
+			WHERE id = $3 AND deleted_at IS NULL
+		`, r.tableName, key)
+		_, err = r.db.Exec(ctx, query,
+			value,
+			time.Now(),
+			id,
+		)
+	}
 
 	if err != nil {
 		return fmt.Errorf("UpdateColumn %d %s=%s: %w", id, key, value, err)

@@ -25,6 +25,8 @@ func (r *Router) init() {
 	r.HandleFunc("/api/bot", r.showBot)
 	r.HandleFunc("/api/test1", r.test1)
 
+	r.HandleFunc("/api/loginAuthCode", r.loginAuthCode)
+
 
 	r.mux.Handle("/",
 		http.StripPrefix("/",
@@ -37,10 +39,6 @@ func (r *Router) init() {
 		),
 	)
 
-	/*r.static()
-	r.testRouter()
-	r.authRouter()
-	r.telegramRouter()*/
 }
 func (r *Router) showBot(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{

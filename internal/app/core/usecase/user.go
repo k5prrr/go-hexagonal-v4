@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
+	"time"
 )
 
 /*
@@ -103,12 +103,11 @@ func (u *UseCase) SendAuthCode(ctx context.Context, phone int64) error {
 		return nil
 	}
 */
-func (u *UseCase) CreateUser(ctx context.Context, tgID, phone int64) (int64, error) {
+func (u *UseCase) CreateUser(ctx context.Context, tgID int64, phone string) (int64, error) {
 	var err error
 
 	// Есть ли телефон, то вылет
-	phoneStr := strconv.FormatInt(phone, 10)
-	user, _ := u.service.RepoUser.GetBy(ctx, "phone", phoneStr)
+	user, _ := u.service.RepoUser.GetBy(ctx, "phone", phone)
 	if user != nil {
 		return 0, errors.New("user have by phone")
 	}
@@ -116,7 +115,7 @@ func (u *UseCase) CreateUser(ctx context.Context, tgID, phone int64) (int64, err
 	// Есть ли тг, то обновим телефон
 	auth, _ := u.service.RepoAuth.GetByInt(ctx, "tg_id", tgID)
 	if auth != nil {
-		err = u.service.RepoUser.UpdateColumn(ctx, auth.UserID, "phone", phoneStr)
+		err = u.service.RepoUser.UpdateColumn(ctx, auth.UserID, "phone", phone)
 		if err != nil {
 			return 0, errors.New("user not update phone")
 		}
@@ -129,7 +128,7 @@ func (u *UseCase) CreateUser(ctx context.Context, tgID, phone int64) (int64, err
 		return 0, err
 	}
 
-	userID, err := u.service.RepoUser.Add(ctx, &domain.User{Phone: phoneStr})
+	userID, err := u.service.RepoUser.Add(ctx, &domain.User{Phone: phone})
 	if err != nil {
 		return 0, errors.New("user not add phone")
 	}
@@ -144,6 +143,54 @@ func (u *UseCase) CreateUser(ctx context.Context, tgID, phone int64) (int64, err
 	}
 
 	return userID, nil
+}
+
+func (u *UseCase) SendAuthCode(ctx context.Context, phone string) error {
+	_, auth, err := u.service.UserAuthByPhone(ctx, phone)
+	if err != nil {
+		return fmt.Errorf("err UserAuthByPhone in SendAuthCode: %w", err)
+	}
+
+	if time.Since(auth.UpdatedAt) < 6*time.Second {
+		return fmt.Errorf("err time load")
+	}
+
+	code := u.service.Code()
+
+	err = u.service.RepoUser.UpdateColumn(ctx, auth.ID, "code", code)
+	if err != nil {
+		return fmt.Errorf("err UpdateColumn in SendAuthCode: %w", err)
+	}
+
+	_, err = u.service.Tg.SendMessage(auth.TgID, fmt.Sprintf("Code: %s", code), "")
+	if err != nil {
+		return fmt.Errorf("err SendMessage in SendAuthCode: %w", err)
+	}
+
+	return nil
+}
+func (u *UseCase) CheckAuthCode(ctx context.Context, phone, code string) (int64, string, error) {
+	_, auth, err := u.service.UserAuthByPhone(ctx, phone)
+	if err != nil {
+		return 0, "", fmt.Errorf("err UserAuthByPhone in SendAuthCode: %w", err)
+	}
+
+	if auth.Code == nil {
+		return 0, "", fmt.Errorf("not code")
+	}
+
+	err = u.service.RepoAuth.UpdateColumn(ctx, auth.ID, "code", "NULL")
+	if err != nil {
+		return 0, "", fmt.Errorf("err UpdateColumn in SendAuthCode: %w", err)
+	}
+
+	if *auth.Code != code {
+		return 0, "", fmt.Errorf("not code")
+	}
+
+
+
+	return auth.UserID, auth.Token, nil
 }
 
 /*

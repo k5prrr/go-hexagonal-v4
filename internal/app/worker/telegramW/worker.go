@@ -97,15 +97,18 @@ func (t *TelegramWorker) Step() {
 				log.Printf("failed to send message: %v", err)
 			}
 
-			phone, err := strconv.ParseInt(message.Params[1], 10, 64)
+			phoneInt, err := strconv.ParseInt(message.Params[1], 10, 64)
 			if err != nil {
 				log.Printf("failed to parse phone: %v", err)
 			}
+			phone := strconv.FormatInt(phoneInt, 10)
+
 			ctx := context.Context(context.Background())
 			_, err = t.useCase.CreateUser(ctx, message.ChatID, phone)
 			if err != nil {
 				log.Printf("failed CreateUser: %v", err)
 			}
+
 			continue
 		}
 

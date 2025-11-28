@@ -12,7 +12,10 @@ type IUseCase interface {
 	AddPhoneByChatId(ctx context.Context, id int, s string) error*/
 
 	//SendAuthCode(ctx context.Context, phone int64) error
-	CreateUser(ctx context.Context, tgID, phone int64) (int64, error)
+	CreateUser(ctx context.Context, tgID int64, phone string) (int64, error)
+	SendAuthCode(ctx context.Context, phone string) error
+	CheckAuthCode(ctx context.Context, phone, code string) (int64, string, error)
+
 	/*LoginCode(ctx context.Context, phone int64, code int64) (int64, string, error)
 
 	 */
