@@ -63,78 +63,73 @@ func (s *Service) Sha256(secret, data string) string {
 	return base64.RawURLEncoding.EncodeToString(sig)
 }
 func (s *Service) Token(userID int64, secret string) string {
-	payload := fmt.Sprintf("%d|%d", userID, time.Now().Add(7*24*time.Hour).Unix())
-
+	payload := fmt.Sprintf("%d|%d", userID, time.Now().Add(30*24*time.Hour).Unix())
 	sha := s.Sha256(secret, payload)
-
 	tokenRaw := fmt.Sprintf("%s|%s", payload, sha)
 
 	return base64.RawURLEncoding.EncodeToString([]byte(tokenRaw))
 }
-func (s *Service) DecodeUserToken(userID int64, secret, tokenStr string) (userID int64, err error) {
-	// Декодируем base64
-	data, err := base64.RawURLEncoding.DecodeString(tokenStr)
+func (s *Service) CurrentUser(ctx context.Context, token string) (*domain.UserFull, error) {
+	data, err := base64.RawURLEncoding.DecodeString(token)
 	if err != nil {
-		return 0, fmt.Errorf("invalid token encoding")
+		return nil, fmt.Errorf("invalid token encoding: %w", err)
 	}
 
-	// Разбираем: <userID>|<exp>|<base64(sig)>
 	parts := bytes.Split(data, []byte{'|'})
 	if len(parts) != 3 {
-		return 0, fmt.Errorf("invalid token format")
+		return nil, fmt.Errorf("invalid token format")
 	}
 
 	userIDRaw, expRaw, sigB64 := parts[0], parts[1], parts[2]
 
-	// Парсим userID и exp
-	userID, err = strconv.ParseInt(string(userIDRaw), 10, 64)
+	userID, err := strconv.ParseInt(string(userIDRaw), 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid user id")
+		return nil, fmt.Errorf("invalid user id: %w", err)
 	}
+
 	exp, err := strconv.ParseInt(string(expRaw), 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid expiration")
+		return nil, fmt.Errorf("invalid expiration time: %w", err)
 	}
 
 	if time.Now().Unix() > exp {
-		return 0, fmt.Errorf("token expired")
+		return nil, fmt.Errorf("token expired")
+	}
+
+	// Получаем auth по user_id — там хранится секретный ключ (Token)
+	auth, err := s.RepoAuth.GetByInt(ctx, "user_id", userID)
+	if err != nil {
+		return nil, fmt.Errorf("auth record not found for user %d: %w", userID, err)
 	}
 
 	// Пересчитываем подпись
 	payload := fmt.Sprintf("%d|%d", userID, exp)
-	h := hmac.New(sha256.New, []byte(secret))
-	h.Write([]byte(payload))
-	expectedSig := h.Sum(nil)
-
-	// Декодируем подпись из токена
+	expectedSig := s.Sha256(auth.Secret, payload)
 	gotSig, err := base64.RawURLEncoding.DecodeString(string(sigB64))
 	if err != nil {
-		return 0, fmt.Errorf("invalid signature encoding")
+		return nil, fmt.Errorf("invalid signature encoding: %w", err)
+	}
+	expectedSigBytes, err := base64.RawURLEncoding.DecodeString(expectedSig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode expected signature: %w", err)
 	}
 
-	// Защита от timing-атак
-	if !hmac.Equal(gotSig, expectedSig) {
-		return 0, fmt.Errorf("invalid signature")
+	if !hmac.Equal(gotSig, expectedSigBytes) {
+		return nil, fmt.Errorf("invalid token signature")
 	}
 
-	return userID, nil
+	// Получаем user
+	user, err := s.RepoUser.Get(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	return &domain.UserFull{
+		User: user,
+		Auth: auth,
+	}, nil
 }
-func (s *Service) UserFull(ctx context.Context, id int64) (*domain.UserFull, error) {
-	/*	user, err := s.RepoUser.Get(ctx, id)
-		if err != nil {
-			return nil, nil, err
-		}
 
-		auth, err := s.RepoAuth.GetByInt(ctx, "user_id", user.ID)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return user, auth, nil
-
-	*/
-	return nil, nil
-}
 func (s *Service) UserAuthByPhone(ctx context.Context, phone string) (*domain.UserFull, error) {
 	user, err := s.RepoUser.GetBy(ctx, "phone", phone)
 	if err != nil {
