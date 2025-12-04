@@ -99,7 +99,9 @@ func (d *dependencyInjection) Tg() *telegram.Telegram {
 }
 func (d *dependencyInjection) Services() *service.Service {
 	if d.service == nil {
+		conf := d.Conf()
 		d.service = service.New(
+			conf.Get("APP_SALT", ""),
 			d.Tg(),
 
 			d.Repo(),

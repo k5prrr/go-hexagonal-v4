@@ -123,7 +123,8 @@ func (u *UseCase) CreateUser(ctx context.Context, tgID int64, phone string) (int
 		return auth.UserID, nil
 	}
 
-	token, err := u.service.Token(32) // 32 to 64 chars
+	// создаём секрет
+	secret, err := u.service.Secret(32) // 32 to 64 chars
 	if err != nil {
 		return 0, err
 	}
@@ -136,7 +137,7 @@ func (u *UseCase) CreateUser(ctx context.Context, tgID int64, phone string) (int
 	_, err = u.service.RepoAuth.Add(ctx, &domain.Auth{
 		UserID: userID,
 		TgID:   tgID,
-		Token:  token,
+		Secret: secret,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to add auth for tg: %w", err)
@@ -146,10 +147,11 @@ func (u *UseCase) CreateUser(ctx context.Context, tgID int64, phone string) (int
 }
 
 func (u *UseCase) SendAuthCode(ctx context.Context, phone string) error {
-	_, auth, err := u.service.UserAuthByPhone(ctx, phone)
+	userFull, err := u.service.UserAuthByPhone(ctx, phone)
 	if err != nil {
 		return fmt.Errorf("err UserAuthByPhone in SendAuthCode: %w", err)
 	}
+	auth := userFull.Auth
 
 	if time.Since(auth.UpdatedAt) < 6*time.Second {
 		return fmt.Errorf("err time load")
@@ -170,10 +172,11 @@ func (u *UseCase) SendAuthCode(ctx context.Context, phone string) error {
 	return nil
 }
 func (u *UseCase) CheckAuthCode(ctx context.Context, phone, code string) (int64, string, error) {
-	_, auth, err := u.service.UserAuthByPhone(ctx, phone)
+	userFull, err := u.service.UserAuthByPhone(ctx, phone)
 	if err != nil {
 		return 0, "", fmt.Errorf("err UserAuthByPhone in SendAuthCode: %w", err)
 	}
+	auth := userFull.Auth
 
 	if auth.Code == nil {
 		return 0, "", fmt.Errorf("not code")
@@ -188,9 +191,9 @@ func (u *UseCase) CheckAuthCode(ctx context.Context, phone, code string) (int64,
 		return 0, "", fmt.Errorf("not code")
 	}
 
+	token := u.service.Token(auth.UserID, auth.Secret)
 
-
-	return auth.UserID, auth.Token, nil
+	return auth.UserID, token, nil
 }
 
 /*

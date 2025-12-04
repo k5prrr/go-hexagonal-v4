@@ -50,7 +50,7 @@ type Auth struct {
 	UserID      int64
 	TgID        int64
 	Code        *string
-	Token       string
+	Secret       string
 	LastLoginAt *time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

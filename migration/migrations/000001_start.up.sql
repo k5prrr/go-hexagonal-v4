@@ -46,7 +46,7 @@ CREATE TABLE auth (
 
     tg_id bigint UNIQUE NOT NULL,
     code character varying(16),
-    token character varying(64) NOT NULL,
+    secret character varying(64) NOT NULL,
 
     last_login_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT NOW(),
