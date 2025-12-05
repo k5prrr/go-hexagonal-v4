@@ -146,6 +146,7 @@ func (u *UseCase) CreateUser(ctx context.Context, tgID int64, phone string) (int
 	return userID, nil
 }
 
+// Отправка кода для входа
 func (u *UseCase) SendAuthCode(ctx context.Context, phone string) error {
 	userFull, err := u.service.UserAuthByPhone(ctx, phone)
 	if err != nil {
@@ -159,7 +160,7 @@ func (u *UseCase) SendAuthCode(ctx context.Context, phone string) error {
 
 	code := u.service.Code()
 
-	err = u.service.RepoUser.UpdateColumn(ctx, auth.ID, "code", code)
+	err = u.service.RepoAuth.UpdateColumn(ctx, auth.ID, "code", code)
 	if err != nil {
 		return fmt.Errorf("err UpdateColumn in SendAuthCode: %w", err)
 	}
@@ -196,8 +197,6 @@ func (u *UseCase) CheckAuthCode(ctx context.Context, phone, code string) (string
 	return token, nil
 }
 
-
 func (u *UseCase) CurrentUser(ctx context.Context, token string) (*domain.UserFull, error) {
 	return u.service.CurrentUser(ctx, token)
 }
-

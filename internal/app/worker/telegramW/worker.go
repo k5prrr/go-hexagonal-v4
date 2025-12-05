@@ -26,7 +26,7 @@ func New(tg *telegram.Telegram, useCase port.IUseCase) *TelegramWorker {
 	}
 }
 
-func (t *TelegramWorker) Run(ctx context.Context, timeoutSec int) {
+func (t *TelegramWorker) Run(ctx context.Context, timeoutSec int64) {
 	ctx, t.cancel = context.WithCancel(ctx)
 	interval := time.Duration(timeoutSec) * time.Second
 

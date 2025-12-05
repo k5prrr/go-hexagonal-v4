@@ -143,4 +143,3 @@ func (s *Service) UserAuthByPhone(ctx context.Context, phone string) (*domain.Us
 		Auth: auth,
 	}, nil
 }
-

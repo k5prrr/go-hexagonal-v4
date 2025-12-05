@@ -44,18 +44,16 @@ type UserGroup struct {
 (4,	'Новый');
 */
 
-
 type Auth struct {
 	ID          int64
 	UserID      int64
 	TgID        int64
 	Code        *string
-	Secret       string
+	Secret      string
 	LastLoginAt *time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
-
 
 type UserFull struct {
 	User *User

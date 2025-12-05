@@ -3,6 +3,7 @@ package api
 import (
 	"app/internal/app/core/domain"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 )
@@ -12,8 +13,13 @@ type AuthRequest struct {
 	Code  int64 `json:"code"`
 }
 
-func (r *Router) loginAuthCode(w http.ResponseWriter, req *http.Request) {
+func (r *Router) loginCode(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	/*json.NewEncoder(w).Encode(map[string]interface{}{
+		"currentUser": 123,
+	})
+	return*/
 
 	request := AuthRequest{}
 	err := json.NewDecoder(req.Body).Decode(&request)
@@ -32,7 +38,7 @@ func (r *Router) loginAuthCode(w http.ResponseWriter, req *http.Request) {
 		err = r.useCase.SendAuthCode(ctx, phoneStr)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"err": "Failed SendAuthCode"})
+			json.NewEncoder(w).Encode(map[string]string{"err": fmt.Sprintf("Failed SendAuthCode %s", err.Error())})
 
 			return
 		}
@@ -68,11 +74,14 @@ func (r *Router) loginAuthCode(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *Router) currentUserH(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
 
-	currentUser, err := r.useCase.CurrentUser(ctx, token)
-	json.NewEncoder(w).Encode(map[string]string{
-		"bot": r.bot,
+	currentUser := r.currentUser(w, req)
+	if currentUser == nil {
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"currentUser": currentUser,
 	})
 }
 
@@ -88,6 +97,7 @@ func (r *Router) currentUser(w http.ResponseWriter, req *http.Request) *domain.U
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"err": "Failed CurrentUser"})
+		return nil
 	}
 
 	return currentUser

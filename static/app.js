@@ -1617,7 +1617,7 @@ const app = {
 
         currentUser.phone = utils.toInt(data.phone)
 
-        app.ajax('sendAuthCode', {phone:currentUser.phone}, answer => {
+        app.ajax('loginCode', {phone:currentUser.phone}, answer => {
             console.log(answer)
         })
 

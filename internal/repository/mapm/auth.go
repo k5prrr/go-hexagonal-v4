@@ -50,4 +50,3 @@ func (m *MapAuth) Delete(token string) {
 
 	delete(m.m, token)
 }
-

@@ -22,9 +22,9 @@ func New(useCase port.IUseCase, bot string) *Router {
 	return r
 }
 func (r *Router) init() {
-	r.HandleFunc("/api/bot", r.showBot)
-	r.HandleFunc("/api/loginAuthCode", r.loginAuthCode)
-	r.HandleFunc("/api/currentUser", r.currentUserH)
+	r.HandleFunc("/api/bot", r.showBot) // Только ссылка на бот
+	r.HandleFunc("/api/loginCode", r.loginCode)
+	r.HandleFunc("/api/currentUser", r.currentUserH) // Текущий пользователь
 
 	r.HandleFunc("/api/test1", r.test1)
 

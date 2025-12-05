@@ -7,7 +7,6 @@ import (
 
 // Так, давай на первых этапах IUseCase будет как общий, а потом разделим
 type IUseCase interface {
-
 	CreateUser(ctx context.Context, tgID int64, phone string) (int64, error)
 	SendAuthCode(ctx context.Context, phone string) error
 	CheckAuthCode(ctx context.Context, phone, code string) (string, error)
@@ -57,7 +56,6 @@ type IRepoAuth interface {
 	Delete(ctx context.Context, id int64, soft bool) error
 	DeleteBy(ctx context.Context, filterKey, filterValue string, soft bool) error
 }
-
 
 type IMapAuth interface {
 	Set(token string, userFull *domain.UserFull)
