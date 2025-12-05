@@ -23,10 +23,10 @@ func New(useCase port.IUseCase, bot string) *Router {
 }
 func (r *Router) init() {
 	r.HandleFunc("/api/bot", r.showBot)
-	r.HandleFunc("/api/test1", r.test1)
-
 	r.HandleFunc("/api/loginAuthCode", r.loginAuthCode)
+	r.HandleFunc("/api/currentUser", r.currentUserH)
 
+	r.HandleFunc("/api/test1", r.test1)
 
 	r.mux.Handle("/",
 		http.StripPrefix("/",
@@ -61,7 +61,6 @@ func (r *Router) test1(w http.ResponseWriter, req *http.Request) {
 }
 
 // ---
-
 
 // Прокидываем для удобства
 func (r *Router) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) {

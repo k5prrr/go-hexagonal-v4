@@ -171,33 +171,33 @@ func (u *UseCase) SendAuthCode(ctx context.Context, phone string) error {
 
 	return nil
 }
-func (u *UseCase) CheckAuthCode(ctx context.Context, phone, code string) (int64, string, error) {
+func (u *UseCase) CheckAuthCode(ctx context.Context, phone, code string) (string, error) {
 	userFull, err := u.service.UserAuthByPhone(ctx, phone)
 	if err != nil {
-		return 0, "", fmt.Errorf("err UserAuthByPhone in SendAuthCode: %w", err)
+		return "", fmt.Errorf("err UserAuthByPhone in SendAuthCode: %w", err)
 	}
 	auth := userFull.Auth
 
 	if auth.Code == nil {
-		return 0, "", fmt.Errorf("not code")
+		return "", fmt.Errorf("not code")
 	}
 
 	err = u.service.RepoAuth.UpdateColumn(ctx, auth.ID, "code", "NULL")
 	if err != nil {
-		return 0, "", fmt.Errorf("err UpdateColumn in SendAuthCode: %w", err)
+		return "", fmt.Errorf("err UpdateColumn in SendAuthCode: %w", err)
 	}
 
 	if *auth.Code != code {
-		return 0, "", fmt.Errorf("not code")
+		return "", fmt.Errorf("not code")
 	}
 
-	token := u.service.Token(auth.UserID, auth.Secret)
+	token := u.service.Token(auth.ID, auth.Secret)
 
-	return auth.UserID, token, nil
+	return token, nil
 }
 
-/*
-func (u *UseCase) LoginCode(ctx context.Context, phone int64, code int64) (int64, string, error) {
-	return 0, "", nil
+
+func (u *UseCase) CurrentUser(ctx context.Context, token string) (*domain.UserFull, error) {
+	return u.service.CurrentUser(ctx, token)
 }
-*/
+

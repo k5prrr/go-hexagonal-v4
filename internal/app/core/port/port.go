@@ -7,18 +7,13 @@ import (
 
 // Так, давай на первых этапах IUseCase будет как общий, а потом разделим
 type IUseCase interface {
-	/*CreateCodeCheckPhone(ctx context.Context, t string) (string, error)
-	AddChatIdByCodeCheckPhone(ctx context.Context, code string, id int) error
-	AddPhoneByChatId(ctx context.Context, id int, s string) error*/
 
-	//SendAuthCode(ctx context.Context, phone int64) error
 	CreateUser(ctx context.Context, tgID int64, phone string) (int64, error)
 	SendAuthCode(ctx context.Context, phone string) error
-	CheckAuthCode(ctx context.Context, phone, code string) (int64, string, error)
+	CheckAuthCode(ctx context.Context, phone, code string) (string, error)
 
-	/*LoginCode(ctx context.Context, phone int64, code int64) (int64, string, error)
+	CurrentUser(ctx context.Context, token string) (*domain.UserFull, error)
 
-	 */
 	Test1() (*domain.User, error)
 }
 
