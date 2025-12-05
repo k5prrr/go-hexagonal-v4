@@ -21,6 +21,24 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+type IRepoAuth interface {
+	Add(ctx context.Context, entity *domain.Auth) (int64, error)
+
+	Get(ctx context.Context, id int64) (*domain.Auth, error)
+	GetBy(ctx context.Context, filterKey, filterValue string) (*domain.Auth, error)
+	GetByInt(ctx context.Context, filterKey string, filterValue int64) (*domain.Auth, error)
+
+	List(ctx context.Context, offset, limit int64) ([]domain.Auth, error)
+	ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) ([]domain.Auth, error)
+
+	Update(ctx context.Context, id int64, entity *domain.Auth) error
+	UpdateBy(ctx context.Context, filterKey, filterValue string, entity *domain.Auth) error
+	UpdateColumn(ctx context.Context, id int64, key, value string) error
+
+	Delete(ctx context.Context, id int64, soft bool) error
+	DeleteBy(ctx context.Context, filterKey, filterValue string, soft bool) error
+}
+
 type RepoAuth struct {
 	db               database.IDB
 	tableName        string
@@ -39,7 +57,7 @@ func NewRepoAuth(db database.IDB) *RepoAuth {
 		tableName: "auth",
 		columns: []string{
 			"user_id", "tg_id",
-			"code", "token", "last_login_at",
+			"code", "secret", "last_login_at",
 		},
 	}
 }
@@ -53,7 +71,7 @@ func (r *RepoAuth) scanEntityRow(row pgx.Row) (*domain.Auth, error) {
 		&entity.UserID,
 		&entity.TgID,
 		&entity.Code,
-		&entity.Token,
+		&entity.Secret,
 		&entity.LastLoginAt,
 
 		&entity.CreatedAt,
@@ -90,7 +108,7 @@ func (r *RepoAuth) Add(ctx context.Context, entity *domain.Auth) (int64, error) 
 		entity.UserID,
 		entity.TgID,
 		entity.Code,
-		entity.Token,
+		entity.Secret,
 		entity.LastLoginAt,
 
 		entity.CreatedAt,
@@ -125,7 +143,7 @@ func (r *RepoAuth) Update(ctx context.Context, id int64, entity *domain.Auth) er
 		entity.UserID,
 		entity.TgID,
 		entity.Code,
-		entity.Token,
+		entity.Secret,
 		entity.LastLoginAt,
 
 		entity.UpdatedAt,
@@ -158,7 +176,7 @@ func (r *RepoAuth) UpdateBy(ctx context.Context, filterKey, filterValue string, 
 		entity.UserID,
 		entity.TgID,
 		entity.Code,
-		entity.Token,
+		entity.Secret,
 		entity.LastLoginAt,
 
 		entity.UpdatedAt,

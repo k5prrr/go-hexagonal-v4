@@ -21,6 +21,23 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+type IRepoUser interface {
+	Add(ctx context.Context, entity *domain.User) (int64, error)
+
+	Get(ctx context.Context, id int64) (*domain.User, error)
+	GetBy(ctx context.Context, filterKey, filterValue string) (*domain.User, error)
+	GetByInt(ctx context.Context, filterKey string, filterValue int64) (*domain.User, error)
+
+	List(ctx context.Context, offset, limit int64) ([]domain.User, error)
+	ListBy(ctx context.Context, filterKey, filterValue string, offset, limit int64) ([]domain.User, error)
+
+	Update(ctx context.Context, id int64, entity *domain.User) error
+	UpdateBy(ctx context.Context, filterKey, filterValue string, entity *domain.User) error
+	UpdateColumn(ctx context.Context, id int64, key, value string) error
+
+	Delete(ctx context.Context, id int64, soft bool) error
+	DeleteBy(ctx context.Context, filterKey, filterValue string, soft bool) error
+}
 type RepoUser struct {
 	db               database.IDB
 	tableName        string

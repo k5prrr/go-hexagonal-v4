@@ -57,13 +57,13 @@ func (e *Env) Get(key, defaultValue string) string {
 	}
 	return result
 }
-func (e *Env) Int(key string, defaultValue int) int {
+func (e *Env) Int(key string, defaultValue int64) int64 {
 	resultStr, exists := os.LookupEnv(key)
 	if !exists {
 		return defaultValue
 	}
 
-	result, err := strconv.Atoi(resultStr)
+	result, err := strconv.ParseInt(resultStr, 10, 64)
 	if err != nil {
 		return defaultValue
 	}

@@ -62,3 +62,10 @@ type IRepoAuth interface {
 	Delete(ctx context.Context, id int64, soft bool) error
 	DeleteBy(ctx context.Context, filterKey, filterValue string, soft bool) error
 }
+
+
+type IMapAuth interface {
+	Set(token string, userFull *domain.UserFull)
+	Get(token string) *domain.UserFull
+	Delete(token string)
+}

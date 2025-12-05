@@ -7,6 +7,7 @@ import (
 	"app/internal/app/core/service"
 	"app/internal/app/core/usecase"
 	"app/internal/app/worker/telegramW"
+	"app/internal/repository/mapm"
 	"app/internal/repository/postgres"
 	"app/migration"
 	"app/pkg/database"
@@ -20,6 +21,7 @@ type dependencyInjection struct {
 	conf           *env.Env
 	db             database.IDB
 	migration      *migration.Migration
+	mapAuth        port.IMapAuth
 	repo           port.IRepo
 	repoUser       port.IRepoUser
 	repoAuth       port.IRepoAuth
@@ -38,6 +40,7 @@ func (d *dependencyInjection) Conf() *env.Env {
 	if d.conf == nil {
 		d.conf = env.New(".env")
 	}
+
 	return d.conf
 }
 func (d *dependencyInjection) DB() database.IDB {
@@ -56,6 +59,7 @@ func (d *dependencyInjection) DB() database.IDB {
 		}
 		d.db = db
 	}
+
 	return d.db
 }
 func (d *dependencyInjection) Migration() *migration.Migration {
@@ -63,7 +67,16 @@ func (d *dependencyInjection) Migration() *migration.Migration {
 		db := d.DB()
 		d.migration = migration.New(db.Pool())
 	}
+
 	return d.migration
+}
+func (d *dependencyInjection) MapAuth() port.IMapAuth {
+	if d.mapAuth == nil {
+		conf := d.Conf()
+		d.mapAuth = mapm.NewMapAuth(conf.Int("APP_AUTH_MAX", 1024))
+	}
+
+	return d.mapAuth
 }
 
 func (d *dependencyInjection) Repo() port.IRepo {
@@ -103,6 +116,7 @@ func (d *dependencyInjection) Services() *service.Service {
 		d.service = service.New(
 			conf.Get("APP_SALT", ""),
 			d.Tg(),
+			d.MapAuth(),
 
 			d.Repo(),
 			d.RepoUser(),
